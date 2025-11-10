@@ -124,3 +124,6 @@ runcmd:
   # 2) Compose 실행
   - bash -lc 'until docker info >/dev/null 2>&1; do sleep 2; done'
   - docker compose -f /home/ubuntu/app/docker-compose.postgres.yml up -d
+
+  # 3) 최초 1회 데이터셋 다운로드/업로드 실행 (로그 저장)
+  - su - ubuntu -c 'KAGGLE_CONFIG_DIR=/home/ubuntu/.kaggle /home/ubuntu/backend/scripts/download-dataset.sh >> /var/log/arxiv_sync.log 2>&1 || true'

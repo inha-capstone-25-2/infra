@@ -1,6 +1,5 @@
 locals {
-  username      = "inha-capstone-02"
-  snapshot_date = formatdate("YYYYMMDD", timestamp())
+  username = "inha-capstone-02"
 }
 
 resource "aws_s3_bucket" "arxiv" {
@@ -20,31 +19,7 @@ resource "aws_s3_bucket_public_access_block" "arxiv" {
   restrict_public_buckets = true
 }
 
-resource "aws_s3_object" "snapshot_placeholder" {
-  bucket       = aws_s3_bucket.arxiv.id
-  key          = "snapshots/${local.snapshot_date}/arxiv-metadata-oai-snapshot.json.gz"
-  content      = ""
-  content_type = "application/gzip"
-}
-
-resource "aws_s3_object" "latest_placeholder" {
-  bucket       = aws_s3_bucket.arxiv.id
-  key          = "latest.json.gz"
-  content      = ""
-  content_type = "application/gzip"
-}
-
 output "arxiv_bucket_name" {
   value       = aws_s3_bucket.arxiv.bucket
   description = "S3 bucket name"
-}
-
-output "snapshot_object_key" {
-  value       = aws_s3_object.snapshot_placeholder.key
-  description = "Created snapshot object key"
-}
-
-output "latest_object_key" {
-  value       = aws_s3_object.latest_placeholder.key
-  description = "Created latest object key"
 }
