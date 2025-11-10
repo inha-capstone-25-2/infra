@@ -24,12 +24,62 @@ variable "postgres_password" {
   sensitive   = true
 }
 
-variable "username" {
-  description = "Prefix for the S3 bucket name (e.g., username -> username-arxiv)"
+variable "region" {
+  description = "AWS region"
   type        = string
+  default     = "us-west-2"
+}
 
-  validation {
-    condition     = can(regex("^[a-z0-9][a-z0-9-]*[a-z0-9]$", var.username)) && length(var.username) <= 57
-    error_message = "username must be lowercase alphanumeric and hyphen, cannot start/end with hyphen, and keep total bucket name <= 63 (username + '-arxiv')."
-  }
+variable "vpc_id" {
+  description = "Target VPC ID"
+  type        = string
+  default     = "vpc-0a8e611b221cddec6"
+}
+
+variable "security_group_id" {
+  description = "Security Group ID"
+  type        = string
+  default     = "sg-08b23a1e6bd2bbd1d"
+}
+
+variable "key_name" {
+  description = "EC2 key pair name"
+  type        = string
+  default     = "capstone-02"
+}
+
+variable "iam_instance_profile_name" {
+  description = "IAM Instance Profile name"
+  type        = string
+  default     = "SafeInstanceProfileForUser-inha-capstone-02"
+}
+
+variable "server_instance_type" {
+  description = "Instance type for server EC2"
+  type        = string
+  default     = "t3.medium"
+}
+
+variable "mongodb_instance_type" {
+  description = "Instance type for MongoDB EC2"
+  type        = string
+  default     = "t3.medium"
+}
+
+variable "server_root_volume_size" {
+  description = "Root EBS size (GB) for server EC2"
+  type        = number
+  default     = 30
+}
+
+variable "mongodb_root_volume_size" {
+  description = "Root EBS size (GB) for MongoDB EC2"
+  type        = number
+  default     = 30
+}
+
+variable "root_volume_type" {
+  description = "Root EBS volume type"
+  type        = string
+  default     = "gp3"
 }

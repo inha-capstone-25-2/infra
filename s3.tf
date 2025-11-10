@@ -1,12 +1,14 @@
 locals {
+  username      = "inha-capstone-02"
   snapshot_date = formatdate("YYYYMMDD", timestamp())
 }
 
 resource "aws_s3_bucket" "arxiv" {
-  bucket = "${var.username}-arxiv"
+  bucket = "${local.username}-arxiv"
 
   tags = {
-    Name = "${var.username}-arxiv"
+    Name  = "${local.username}-arxiv"
+    Owner = local.username
   }
 }
 
@@ -18,19 +20,17 @@ resource "aws_s3_bucket_public_access_block" "arxiv" {
   restrict_public_buckets = true
 }
 
-# placeholder for snapshots/YYYYMMDD/arxiv-metadata-oai-snapshot.json.gz
 resource "aws_s3_object" "snapshot_placeholder" {
   bucket       = aws_s3_bucket.arxiv.id
   key          = "snapshots/${local.snapshot_date}/arxiv-metadata-oai-snapshot.json.gz"
-  content      = ""            # empty placeholder
+  content      = ""
   content_type = "application/gzip"
 }
 
-# placeholder for latest.json.gz at bucket root
 resource "aws_s3_object" "latest_placeholder" {
   bucket       = aws_s3_bucket.arxiv.id
   key          = "latest.json.gz"
-  content      = ""            # empty placeholder
+  content      = ""
   content_type = "application/gzip"
 }
 

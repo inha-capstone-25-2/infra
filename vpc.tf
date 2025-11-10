@@ -1,5 +1,5 @@
 data "aws_vpc" "selected" {
-  id = "vpc-0a8e611b221cddec6"
+  id = var.vpc_id
 }
 
 data "aws_subnets" "in_vpc" {
