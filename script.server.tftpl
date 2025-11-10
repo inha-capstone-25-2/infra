@@ -43,31 +43,31 @@ write_files:
       #!/usr/bin/env bash
       set -euo pipefail
 
-      : "${DATASET:=Cornell-University/arxiv}"
-      : "${FILENAME:=arxiv-metadata-oai-snapshot.json}"
-      : "${S3_BUCKET:=${s3_bucket_name}}"
-      : "${S3_PREFIX:=arxiv}"
-      SNAPSHOT_DATE="${SNAPSHOT_DATE:-$(date -u +%Y%m%d)}"
+      : "$${DATASET:=Cornell-University/arxiv}"
+      : "$${FILENAME:=arxiv-metadata-oai-snapshot.json}"
+      : "$${S3_BUCKET:=${s3_bucket_name}}"
+      : "$${S3_PREFIX:=arxiv}"
+      SNAPSHOT_DATE="$${SNAPSHOT_DATE:-$(date -u +%Y%m%d)}"
 
-      workdir="${TMPDIR:-/tmp}/arxiv_sync.$$"
+      workdir="$${TMPDIR:-/tmp}/arxiv_sync.$$"
       mkdir -p "$workdir"
       trap 'rm -rf "$workdir"' EXIT
 
       echo "[*] Downloading from Kaggle..."
       kaggle datasets download -d "$DATASET" -f "$FILENAME" -p "$workdir" --quiet
-      unzip -o "${workdir}/${FILENAME}.zip" -d "$workdir"
-      rm -f "${workdir}/${FILENAME}.zip"
+      unzip -o "$workdir/$FILENAME.zip" -d "$workdir"
+      rm -f "$workdir/$FILENAME.zip"
 
       echo "[*] Gzipping..."
-      gzip -9 "${workdir}/${FILENAME}"
+      gzip -9 "$workdir/$FILENAME"
 
-      snap_key="${S3_PREFIX}/snapshots/${SNAPSHOT_DATE}/arxiv-metadata-oai-snapshot.json.gz"
-      latest_key="${S3_PREFIX}/latest.json.gz"
+      snap_key="$S3_PREFIX/snapshots/$SNAPSHOT_DATE/arxiv-metadata-oai-snapshot.json.gz"
+      latest_key="$S3_PREFIX/latest.json.gz"
 
-      echo "[*] Uploading to s3://${S3_BUCKET}/${snap_key}"
-      aws s3 cp "${workdir}/${FILENAME}.gz" "s3://${S3_BUCKET}/${snap_key}" --only-show-errors
-      echo "[*] Updating latest pointer s3://${S3_BUCKET}/${latest_key}"
-      aws s3 cp "s3://${S3_BUCKET}/${snap_key}" "s3://${S3_BUCKET}/${latest_key}" --only-show-errors
+      echo "[*] Uploading to s3://$S3_BUCKET/$snap_key"
+      aws s3 cp "$workdir/$FILENAME.gz" "s3://$S3_BUCKET/$snap_key" --only-show-errors
+      echo "[*] Updating latest pointer s3://$S3_BUCKET/$latest_key"
+      aws s3 cp "s3://$S3_BUCKET/$snap_key" "s3://$S3_BUCKET/$latest_key" --only-show-errors
 
       echo "[*] Done."
   - path: /etc/cron.d/arxiv_sync
