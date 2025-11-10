@@ -1,0 +1,126 @@
+#cloud-config
+package_update: true
+
+bootcmd:
+  - mkdir -p /home/ubuntu/.kaggle
+  - chown ubuntu:ubuntu /home/ubuntu/.kaggle
+  - chmod 0700 /home/ubuntu/.kaggle
+
+write_files:
+  - path: /home/ubuntu/app/docker-compose.postgres.yml
+    permissions: '0644'
+    content: |
+      version: '3.8'
+      services:
+        postgres:
+          image: postgres:16
+          container_name: postgres_prod
+          restart: unless-stopped
+          environment:
+            - POSTGRES_USER=${postgres_username}
+            - POSTGRES_PASSWORD=${postgres_password}
+            - POSTGRES_DB=rsrs
+            - PGDATA=/var/lib/postgresql/data
+          ports:
+            - "5432:5432"
+          volumes:
+            - postgres_data:/var/lib/postgresql/data
+          networks:
+            - inha-network
+      volumes:
+        postgres_data:
+      networks:
+        inha-network:
+          driver: bridge
+  - path: /home/ubuntu/.kaggle/kaggle.json
+    permissions: '0600'
+    owner: ubuntu:ubuntu
+    content: |
+      ${kaggle_json}
+  - path: /home/ubuntu/backend/scripts/download-dataset.sh
+    permissions: '0755'
+    content: |
+      #!/usr/bin/env bash
+      set -euo pipefail
+
+      : "${DATASET:=Cornell-University/arxiv}"
+      : "${FILENAME:=arxiv-metadata-oai-snapshot.json}"
+      : "${S3_BUCKET:=${s3_bucket_name}}"
+      : "${S3_PREFIX:=arxiv}"
+      SNAPSHOT_DATE="${SNAPSHOT_DATE:-$(date -u +%Y%m%d)}"
+
+      workdir="${TMPDIR:-/tmp}/arxiv_sync.$$"
+      mkdir -p "$workdir"
+      trap 'rm -rf "$workdir"' EXIT
+
+      echo "[*] Downloading from Kaggle..."
+      kaggle datasets download -d "$DATASET" -f "$FILENAME" -p "$workdir" --quiet
+      unzip -o "${workdir}/${FILENAME}.zip" -d "$workdir"
+      rm -f "${workdir}/${FILENAME}.zip"
+
+      echo "[*] Gzipping..."
+      gzip -9 "${workdir}/${FILENAME}"
+
+      snap_key="${S3_PREFIX}/snapshots/${SNAPSHOT_DATE}/arxiv-metadata-oai-snapshot.json.gz"
+      latest_key="${S3_PREFIX}/latest.json.gz"
+
+      echo "[*] Uploading to s3://${S3_BUCKET}/${snap_key}"
+      aws s3 cp "${workdir}/${FILENAME}.gz" "s3://${S3_BUCKET}/${snap_key}" --only-show-errors
+      echo "[*] Updating latest pointer s3://${S3_BUCKET}/${latest_key}"
+      aws s3 cp "s3://${S3_BUCKET}/${snap_key}" "s3://${S3_BUCKET}/${latest_key}" --only-show-errors
+
+      echo "[*] Done."
+  - path: /etc/cron.d/arxiv_sync
+    permissions: '0644'
+    content: |
+      # Cron: 매일 KST 03:00 실행 (시스템 TZ=Asia/Seoul)
+      SHELL=/bin/bash
+      PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
+      HOME=/home/ubuntu
+      KAGGLE_CONFIG_DIR=/home/ubuntu/.kaggle
+      S3_BUCKET=${s3_bucket_name}
+      S3_PREFIX=arxiv
+      DATASET=Cornell-University/arxiv
+      FILENAME=arxiv-metadata-oai-snapshot.json
+      # 분 시 일 월 요일
+      0 3 * * * ubuntu /home/ubuntu/backend/scripts/download-dataset.sh >> /var/log/arxiv_sync.log 2>&1
+
+runcmd:
+  # 0) 홈/백엔드 디렉터리 선생성
+  - chown ubuntu:ubuntu /home/ubuntu
+  - chmod 0755 /home/ubuntu
+  - mkdir -p /home/ubuntu/backend
+  - chown -R ubuntu:ubuntu /home/ubuntu/backend
+  - chmod -R u+rwX,g+rwX /home/ubuntu/backend
+  - mkdir -p /home/ubuntu/app
+  - chown -R ubuntu:ubuntu /home/ubuntu/app
+
+  # Timezone Asia/Seoul (KST)
+  - timedatectl set-timezone Asia/Seoul
+
+  # 0-1) 스왑(4GB) 생성 및 영구 적용
+  - bash -lc 'test -f /swapfile || (fallocate -l 4G /swapfile || dd if=/dev/zero of=/swapfile bs=1M count=4096)'
+  - chmod 600 /swapfile
+  - mkswap /swapfile || true
+  - swapon /swapfile || true
+  - bash -lc "grep -q '^/swapfile ' /etc/fstab || echo '/swapfile none swap sw 0 0' >> /etc/fstab"
+
+  # 1) Docker 설치
+  - apt-get update -y
+  - curl -fsSL https://get.docker.com | sh
+  - systemctl enable docker
+  - systemctl start docker
+  - apt-get update -y
+  - apt-get install -y docker-compose-plugin
+
+  # (Dataset sync 필수 패키지)
+  - apt-get install -y unzip python3 python3-pip awscli
+  - pip3 install --no-cache-dir kaggle
+
+  # Kaggle 토큰 파일/권한 확인
+  - chown ubuntu:ubuntu /home/ubuntu/.kaggle/kaggle.json
+  - chmod 0600 /home/ubuntu/.kaggle/kaggle.json
+
+  # 2) Compose 실행
+  - bash -lc 'until docker info >/dev/null 2>&1; do sleep 2; done'
+  - docker compose -f /home/ubuntu/app/docker-compose.postgres.yml up -d

@@ -19,10 +19,14 @@ resource "aws_instance" "capstone_02_server_ec2" {
 
   user_data_replace_on_change = true
 
-  user_data = templatefile("${path.module}/script.postgres.tftpl", {
+  user_data = templatefile("${path.module}/script.server.tftpl", {
     postgres_username = var.postgres_username
     postgres_password = var.postgres_password
+    s3_bucket_name    = aws_s3_bucket.arxiv.bucket
+    kaggle_json       = file("${path.module}/kaggle.json")
   })
+
+  depends_on = [aws_s3_bucket.arxiv]
 
   tags = {
     Name = "capstone_02_server_ec2"
