@@ -1,0 +1,50 @@
+#cloud-config
+package_update: true
+
+write_files:
+  - path: /home/ubuntu/app/docker-compose.mongodb.yml
+    permissions: "0644"
+    content: |
+      version: '3.8'
+      services:
+        mongo:
+          image: mongo:6
+          container_name: mongodb_prod
+          restart: unless-stopped
+          environment:
+            - MONGO_INITDB_ROOT_USERNAME=${mongodb_username}
+            - MONGO_INITDB_ROOT_PASSWORD=${mongodb_password}
+          ports:
+            - "27017:27017"
+          volumes:
+            - mongo_data:/data/db
+          networks:
+            - inha-network
+      volumes:
+        mongo_data:
+      networks:
+        inha-network:
+          driver: bridge
+
+runcmd:
+  # 1) Docker 공식 저장소 설정
+  - apt-get install -y ca-certificates curl gnupg
+  - install -m 0755 -d /etc/apt/keyrings
+  - curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+  - chmod a+r /etc/apt/keyrings/docker.gpg
+  - |
+    echo \
+      "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
+      $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | \
+      tee /etc/apt/sources.list.d/docker.list > /dev/null
+  - apt-get update -y
+  - DEBIAN_FRONTEND=noninteractive apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+
+  # 2) Docker 서비스 및 권한
+  - systemctl enable --now docker
+  - usermod -aG docker ubuntu || true
+
+  # 3) 앱 디렉터리 권한 및 실행
+  - mkdir -p /home/ubuntu/app
+  - chown -R ubuntu:ubuntu /home/ubuntu/app
+  - su - ubuntu -c "docker compose -f /home/ubuntu/app/docker-compose.mongodb.yml up -d"

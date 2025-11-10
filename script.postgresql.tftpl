@@ -1,0 +1,40 @@
+#cloud-config
+package_update: true
+
+write_files:
+  - path: /home/ubuntu/app/docker-compose.postgresql.yml
+    permissions: '0644'
+    content: |
+      version: '3.8'
+      services:
+        postgres:
+          image: postgres:16
+          container_name: postgres_prod
+          restart: unless-stopped
+          environment:
+            - POSTGRES_USER=${postgres_username}
+            - POSTGRES_PASSWORD=${postgres_password}
+            - POSTGRES_DB=rsrs
+          ports:
+            - "5432:5432"
+          volumes:
+            - postgres_data:/var/lib/postgresql/data
+          networks:
+            - inha-network
+      volumes:
+        postgres_data:
+      networks:
+        inha-network:
+          driver: bridge
+
+runcmd:
+  - apt-get update -y
+  - curl -fsSL https://get.docker.com | sh
+  - systemctl enable docker
+  - systemctl start docker
+  - apt-get update -y
+  - apt-get install -y docker-compose-plugin
+  - mkdir -p /home/ubuntu/app
+  - chown -R ubuntu:ubuntu /home/ubuntu/app
+  - bash -lc 'until docker info >/dev/null 2>&1; do sleep 2; done'
+  - docker compose -f /home/ubuntu/app/docker-compose.postgresql.yml up -d
