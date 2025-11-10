@@ -112,3 +112,23 @@ resource "aws_instance" "capstone_02_server_ec2" {
     Name = "capstone_02_server_ec2"
   }
 }
+
+output "server_public_ip" {
+  description = "Public IP of capstone_02_server_ec2"
+  value       = aws_instance.capstone_02_server_ec2.public_ip
+}
+
+output "server_public_dns" {
+  description = "Public DNS of capstone_02_server_ec2"
+  value       = aws_instance.capstone_02_server_ec2.public_dns
+}
+
+output "mongodb_public_ip" {
+  description = "Public IP of capstone_02_mongodb_ec2"
+  value       = aws_instance.capstone_02_mongodb_ec2.public_ip
+}
+
+output "mongodb_public_dns" {
+  description = "Public DNS of capstone_02_mongodb_ec2"
+  value       = aws_instance.capstone_02_mongodb_ec2.public_dns
+}
