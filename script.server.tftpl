@@ -32,11 +32,6 @@ write_files:
       networks:
         inha-network:
           driver: bridge
-  - path: /home/ubuntu/.kaggle/kaggle.json
-    permissions: '0600'
-    owner: ubuntu:ubuntu
-    content: |
-      ${kaggle_json}
   - path: /home/ubuntu/backend/scripts/download-dataset.sh
     permissions: '0755'
     content: |
@@ -113,6 +108,8 @@ runcmd:
   - apt-get install -y docker-compose-plugin unzip python3 python3-pip awscli
   - pip3 install --no-cache-dir kaggle
 
+  # Secrets Manager에서 kaggle.json 조회/저장
+  - aws secretsmanager get-secret-value --region ${region} --secret-id ${kaggle_secret_arn} --query SecretString --output text > /home/ubuntu/.kaggle/kaggle.json
   - chown ubuntu:ubuntu /home/ubuntu/.kaggle/kaggle.json
   - chmod 0600 /home/ubuntu/.kaggle/kaggle.json
 

@@ -89,3 +89,22 @@ variable "dataset_log_path" {
   type        = string
   default     = "/var/log/arxiv_sync.log"
 }
+
+variable "kaggle_api_username" {
+  description = "Kaggle API username"
+  type        = string
+  default     = "whqtker"
+}
+
+variable "kaggle_api_key" {
+  description = "Kaggle API key"
+  type        = string
+  sensitive   = true
+  default     = "ef3e5b96c0e478388068768054495ea4"
+}
+
+variable "kaggle_secret_name" {
+  description = "Secrets Manager secret name for kaggle.json"
+  type        = string
+  default     = "inha-capstone-02-kaggle-json"
+}
