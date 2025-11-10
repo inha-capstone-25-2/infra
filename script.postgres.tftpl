@@ -2,7 +2,7 @@
 package_update: true
 
 write_files:
-  - path: /home/ubuntu/app/docker-compose.postgresql.yml
+  - path: /home/ubuntu/app/docker-compose.postgres.yml
     permissions: '0644'
     content: |
       version: '3.8'
@@ -15,6 +15,7 @@ write_files:
             - POSTGRES_USER=${postgres_username}
             - POSTGRES_PASSWORD=${postgres_password}
             - POSTGRES_DB=rsrs
+            - PGDATA=/var/lib/postgresql/data
           ports:
             - "5432:5432"
           volumes:
@@ -36,8 +37,12 @@ runcmd:
   - apt-get install -y docker-compose-plugin
   - mkdir -p /home/ubuntu/app
   - chown -R ubuntu:ubuntu /home/ubuntu/app
+
+  - chown ubuntu:ubuntu /home/ubuntu
+  - chmod 0755 /home/ubuntu
+
   - mkdir -p /home/ubuntu/backend
   - chown -R ubuntu:ubuntu /home/ubuntu/backend
   - chmod -R u+rwX,g+rwX /home/ubuntu/backend
   - bash -lc 'until docker info >/dev/null 2>&1; do sleep 2; done'
-  - docker compose -f /home/ubuntu/app/docker-compose.postgresql.yml up -d
+  - docker compose -f /home/ubuntu/app/docker-compose.postgres.yml up -d
