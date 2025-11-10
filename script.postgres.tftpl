@@ -29,20 +29,23 @@ write_files:
           driver: bridge
 
 runcmd:
+  # 0) 홈/백엔드 디렉터리 선생성
+  - chown ubuntu:ubuntu /home/ubuntu
+  - chmod 0755 /home/ubuntu
+  - mkdir -p /home/ubuntu/backend
+  - chown -R ubuntu:ubuntu /home/ubuntu/backend
+  - chmod -R u+rwX,g+rwX /home/ubuntu/backend
+  - mkdir -p /home/ubuntu/app
+  - chown -R ubuntu:ubuntu /home/ubuntu/app
+
+  # 1) Docker 설치
   - apt-get update -y
   - curl -fsSL https://get.docker.com | sh
   - systemctl enable docker
   - systemctl start docker
   - apt-get update -y
   - apt-get install -y docker-compose-plugin
-  - mkdir -p /home/ubuntu/app
-  - chown -R ubuntu:ubuntu /home/ubuntu/app
 
-  - chown ubuntu:ubuntu /home/ubuntu
-  - chmod 0755 /home/ubuntu
-
-  - mkdir -p /home/ubuntu/backend
-  - chown -R ubuntu:ubuntu /home/ubuntu/backend
-  - chmod -R u+rwX,g+rwX /home/ubuntu/backend
+  # 2) Compose 실행
   - bash -lc 'until docker info >/dev/null 2>&1; do sleep 2; done'
   - docker compose -f /home/ubuntu/app/docker-compose.postgres.yml up -d
