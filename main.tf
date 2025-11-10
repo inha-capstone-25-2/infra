@@ -103,9 +103,9 @@ resource "aws_instance" "capstone_02_server_ec2" {
   user_data_replace_on_change = true
 
   # MySQL 용 스크립트 템플릿 파일 참조
-  user_data = templatefile("${path.module}/script.postgresql.tftpl", {
-    postgresql_username = var.postgresql_username
-    postgresql_password = var.postgresql_password
+  user_data = templatefile("${path.module}/script.postgres.tftpl", {
+    postgres_username = var.postgres_username
+    postgres_password = var.postgres_password
   })
   
   tags = {
