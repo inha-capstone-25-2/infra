@@ -36,5 +36,8 @@ runcmd:
   - apt-get install -y docker-compose-plugin
   - mkdir -p /home/ubuntu/app
   - chown -R ubuntu:ubuntu /home/ubuntu/app
+  - mkdir -p /home/ubuntu/backend
+  - chown -R ubuntu:ubuntu /home/ubuntu/backend
+  - chmod -R u+rwX,g+rwX /home/ubuntu/backend
   - bash -lc 'until docker info >/dev/null 2>&1; do sleep 2; done'
   - docker compose -f /home/ubuntu/app/docker-compose.postgresql.yml up -d
