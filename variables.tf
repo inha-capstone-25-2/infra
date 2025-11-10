@@ -23,3 +23,13 @@ variable "postgres_password" {
   default     = "e2XNR0qnZ7kKygC3Sl5zQ2BF2FkHcCr110CaCqulOOlPs"
   sensitive   = true
 }
+
+variable "username" {
+  description = "Prefix for the S3 bucket name (e.g., username -> username-arxiv)"
+  type        = string
+
+  validation {
+    condition     = can(regex("^[a-z0-9][a-z0-9-]*[a-z0-9]$", var.username)) && length(var.username) <= 57
+    error_message = "username must be lowercase alphanumeric and hyphen, cannot start/end with hyphen, and keep total bucket name <= 63 (username + '-arxiv')."
+  }
+}
