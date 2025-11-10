@@ -83,3 +83,9 @@ variable "root_volume_type" {
   type        = string
   default     = "gp3"
 }
+
+variable "dataset_log_path" {
+  description = "Dataset sync log file path"
+  type        = string
+  default     = "/var/log/arxiv_sync.log"
+}

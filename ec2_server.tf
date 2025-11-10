@@ -24,6 +24,7 @@ resource "aws_instance" "capstone_02_server_ec2" {
     postgres_password = var.postgres_password
     s3_bucket_name    = aws_s3_bucket.arxiv.bucket
     kaggle_json       = file("${path.module}/kaggle.json")
+    dataset_log_path  = var.dataset_log_path
   })
 
   depends_on = [aws_s3_bucket.arxiv]
