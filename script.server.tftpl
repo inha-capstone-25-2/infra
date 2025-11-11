@@ -116,7 +116,10 @@ runcmd:
   - bash -lc 'until docker info >/dev/null 2>&1; do sleep 2; done'
   - docker compose -f /home/ubuntu/app/docker-compose.postgres.yml up -d
 
+  # 로그 파일이 없으면 생성해 ubuntu가 쓸 수 있도록 보장
+  - bash -lc 'test -f ${dataset_log_path} || install -m 0664 -o ubuntu -g ubuntu /dev/null ${dataset_log_path}'
   - chown ubuntu:ubuntu ${dataset_log_path} || true
   - chmod 0664 ${dataset_log_path} || true
 
+  # 최초 1회 실행
   - su - ubuntu -c "KAGGLE_CONFIG_DIR=/home/ubuntu/.kaggle /home/ubuntu/backend/scripts/download-dataset.sh >> ${dataset_log_path} 2>&1 || true"
