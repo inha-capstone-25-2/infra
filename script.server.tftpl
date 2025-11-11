@@ -38,6 +38,11 @@ write_files:
       #!/usr/bin/env bash
       set -euo pipefail
 
+      # Ensure Kaggle credentials are available for CLI
+      export KAGGLE_CONFIG_DIR="$${KAGGLE_CONFIG_DIR:-/home/ubuntu/.kaggle}"
+      export KAGGLE_USERNAME="$${KAGGLE_USERNAME:-${kaggle_api_username}}"
+      export KAGGLE_KEY="$${KAGGLE_KEY:-${kaggle_api_key}}"
+
       : "$${DATASET:=Cornell-University/arxiv}"
       : "$${FILENAME:=arxiv-metadata-oai-snapshot.json}"
       : "$${S3_BUCKET:=${s3_bucket_name}}"
@@ -82,6 +87,8 @@ write_files:
       PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
       HOME=/home/ubuntu
       KAGGLE_CONFIG_DIR=/home/ubuntu/.kaggle
+      KAGGLE_USERNAME=${kaggle_api_username}
+      KAGGLE_KEY=${kaggle_api_key}
       S3_BUCKET=${s3_bucket_name}
       S3_PREFIX=arxiv
       DATASET=Cornell-University/arxiv
@@ -121,5 +128,5 @@ runcmd:
   - chown ubuntu:ubuntu ${dataset_log_path} || true
   - chmod 0664 ${dataset_log_path} || true
 
-  # 최초 1회 실행
-  - su - ubuntu -c "KAGGLE_CONFIG_DIR=/home/ubuntu/.kaggle /home/ubuntu/backend/scripts/download-dataset.sh >> ${dataset_log_path} 2>&1 || true"
+  # 최초 1회 실행 (env로 Kaggle 자격 증명 주입)
+  - su - ubuntu -c "env PATH=/usr/local/bin:/usr/bin:/bin KAGGLE_CONFIG_DIR=/home/ubuntu/.kaggle KAGGLE_USERNAME='${kaggle_api_username}' KAGGLE_KEY='${kaggle_api_key}' /home/ubuntu/backend/scripts/download-dataset.sh >> ${dataset_log_path} 2>&1 || true"
