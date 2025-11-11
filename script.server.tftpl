@@ -106,7 +106,7 @@ runcmd:
 
   - timedatectl set-timezone Asia/Seoul
 
-  - bash -lc 'test -f /swapfile || (fallocate -l 4G /swapfile || dd if=/dev/zero of=/swapfile bs=1M count=4096)'
+  - bash -lc 'test -f /swapfile || (fallocate -l 8G /swapfile || dd if=/dev/zero of=/swapfile bs=1M count=8192)'
   - chmod 600 /swapfile
   - mkswap /swapfile || true
   - swapon /swapfile || true
