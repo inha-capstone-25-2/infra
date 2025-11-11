@@ -41,14 +41,11 @@ write_files:
       # Use ~/.kaggle/kaggle.json
       export KAGGLE_CONFIG_DIR="$${KAGGLE_CONFIG_DIR:-/home/ubuntu/.kaggle}"
 
-      # Terraform 렌더 기본값 주입(런타임 ENV가 우선)
-      S3_BUCKET_DEFAULT="${s3_bucket_name}"
-      S3_PREFIX_DEFAULT="arxiv"
-
+      # 기본값(ENV가 있으면 ENV 우선)
       : "$${DATASET:=Cornell-University/arxiv}"
       : "$${FILENAME:=arxiv-metadata-oai-snapshot.json}"
-      : "$${S3_BUCKET:=${S3_BUCKET_DEFAULT}}"
-      : "$${S3_PREFIX:=${S3_PREFIX_DEFAULT}}"
+      : "$${S3_BUCKET:=${s3_bucket_name}}"
+      : "$${S3_PREFIX:=arxiv}"
       SNAPSHOT_DATE="$${SNAPSHOT_DATE:-$(date -u +%Y%m%d)}"
 
       snap_key="$S3_PREFIX/snapshots/$SNAPSHOT_DATE/arxiv-metadata-oai-snapshot.json.gz"
@@ -113,7 +110,6 @@ write_files:
       PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
       HOME=/home/ubuntu
       KAGGLE_CONFIG_DIR=/home/ubuntu/.kaggle
-      # Terraform이 렌더한 버킷 이름을 ENV로 주입
       S3_BUCKET=${s3_bucket_name}
       S3_PREFIX=arxiv
       DATASET=Cornell-University/arxiv
