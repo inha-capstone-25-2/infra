@@ -38,7 +38,6 @@ write_files:
       #!/usr/bin/env bash
       set -euo pipefail
 
-      # Ensure Kaggle credentials are available for CLI
       export KAGGLE_CONFIG_DIR="$${KAGGLE_CONFIG_DIR:-/home/ubuntu/.kaggle}"
       export KAGGLE_USERNAME="$${KAGGLE_USERNAME:-${kaggle_api_username}}"
       export KAGGLE_KEY="$${KAGGLE_KEY:-${kaggle_api_key}}"
@@ -49,23 +48,33 @@ write_files:
       : "$${S3_PREFIX:=arxiv}"
       SNAPSHOT_DATE="$${SNAPSHOT_DATE:-$(date -u +%Y%m%d)}"
 
+      snap_key="$S3_PREFIX/snapshots/$SNAPSHOT_DATE/arxiv-metadata-oai-snapshot.json.gz"
+      latest_key="$S3_PREFIX/latest.json.gz"
+
       workdir="$${TMPDIR:-/tmp}/arxiv_sync.$$"
       mkdir -p "$workdir"
       trap 'rm -rf "$workdir"' EXIT
 
-      echo "[*] Downloading from Kaggle..."
-      kaggle datasets download -d "$DATASET" -f "$FILENAME" -p "$workdir" --quiet
-      unzip -o "$workdir/$FILENAME.zip" -d "$workdir"
-      rm -f "$workdir/$FILENAME.zip"
+      echo "[*] Downloading ZIP from Kaggle..."
+      # --quiet 제거하여 진행률/로그 표시 (원하면 다시 붙이세요)
+      kaggle datasets download -d "$DATASET" -f "$FILENAME" -p "$workdir"
 
-      echo "[*] Gzipping..."
-      gzip -9 "$workdir/$FILENAME"
+      zip_path="$workdir/$FILENAME.zip"
+      if [ ! -s "$zip_path" ]; then
+        echo "[!] ZIP missing or empty"
+        exit 1
+      fi
 
-      snap_key="$S3_PREFIX/snapshots/$SNAPSHOT_DATE/arxiv-metadata-oai-snapshot.json.gz"
-      latest_key="$S3_PREFIX/latest.json.gz"
+      echo "[*] Streaming unzip -> pv -> gzip -> S3 upload..."
+      # unzip 표준출력 -> pv(진행률) -> gzip -> S3
+      unzip -p "$zip_path" "$FILENAME" \
+        | pv -rab -i 2 \
+        | gzip -6 \
+        | aws s3 cp - "s3://$S3_BUCKET/$snap_key" \
+             --content-type "application/json" \
+             --content-encoding "gzip" \
+             --only-show-errors
 
-      echo "[*] Uploading to s3://$S3_BUCKET/$snap_key"
-      aws s3 cp "$workdir/$FILENAME.gz" "s3://$S3_BUCKET/$snap_key" --only-show-errors
       echo "[*] Updating latest pointer s3://$S3_BUCKET/$latest_key"
       aws s3 cp "s3://$S3_BUCKET/$snap_key" "s3://$S3_BUCKET/$latest_key" --only-show-errors
 
@@ -117,7 +126,7 @@ runcmd:
   - systemctl enable docker
   - systemctl start docker
   - apt-get update -y
-  - apt-get install -y docker-compose-plugin unzip python3 python3-pip awscli
+  - apt-get install -y docker-compose-plugin unzip python3 python3-pip awscli pv
   - pip3 install --no-cache-dir kaggle
 
   - bash -lc 'until docker info >/dev/null 2>&1; do sleep 2; done'
