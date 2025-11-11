@@ -24,13 +24,12 @@ resource "aws_instance" "capstone_02_server_ec2" {
     postgres_password   = var.postgres_password
     s3_bucket_name      = aws_s3_bucket.arxiv.bucket
     dataset_log_path    = var.dataset_log_path
-    region              = var.region
-    kaggle_secret_arn   = aws_secretsmanager_secret.kaggle.arn
+    kaggle_api_username = var.kaggle_api_username
+    kaggle_api_key      = var.kaggle_api_key
   })
 
   depends_on = [
-    aws_s3_bucket.arxiv,
-    aws_secretsmanager_secret_version.kaggle
+    aws_s3_bucket.arxiv
   ]
 
   tags = {

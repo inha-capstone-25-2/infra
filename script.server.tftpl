@@ -65,6 +65,11 @@ write_files:
       aws s3 cp "s3://$S3_BUCKET/$snap_key" "s3://$S3_BUCKET/$latest_key" --only-show-errors
 
       echo "[*] Done."
+  - path: /home/ubuntu/.kaggle/kaggle.json
+    permissions: '0600'
+    owner: ubuntu:ubuntu
+    content: |
+      {"username":"${kaggle_api_username}","key":"${kaggle_api_key}"}
   - path: ${dataset_log_path}
     permissions: '0664'
     owner: ubuntu:ubuntu
@@ -108,17 +113,10 @@ runcmd:
   - apt-get install -y docker-compose-plugin unzip python3 python3-pip awscli
   - pip3 install --no-cache-dir kaggle
 
-  # Secrets Manager에서 kaggle.json 조회/저장
-  - aws secretsmanager get-secret-value --region ${region} --secret-id ${kaggle_secret_arn} --query SecretString --output text > /home/ubuntu/.kaggle/kaggle.json
-  - chown ubuntu:ubuntu /home/ubuntu/.kaggle/kaggle.json
-  - chmod 0600 /home/ubuntu/.kaggle/kaggle.json
-
   - bash -lc 'until docker info >/dev/null 2>&1; do sleep 2; done'
   - docker compose -f /home/ubuntu/app/docker-compose.postgres.yml up -d
 
-  # 로그 파일 소유권 재확인 (idempotent)
   - chown ubuntu:ubuntu ${dataset_log_path} || true
   - chmod 0664 ${dataset_log_path} || true
 
-  # 최초 1회 실행
   - su - ubuntu -c "KAGGLE_CONFIG_DIR=/home/ubuntu/.kaggle /home/ubuntu/backend/scripts/download-dataset.sh >> ${dataset_log_path} 2>&1 || true"
