@@ -38,14 +38,17 @@ write_files:
       #!/usr/bin/env bash
       set -euo pipefail
 
+      # Use ~/.kaggle/kaggle.json
       export KAGGLE_CONFIG_DIR="$${KAGGLE_CONFIG_DIR:-/home/ubuntu/.kaggle}"
-      export KAGGLE_USERNAME="$${KAGGLE_USERNAME:-${kaggle_api_username}}"
-      export KAGGLE_KEY="$${KAGGLE_KEY:-${kaggle_api_key}}"
+
+      # Terraform 렌더 기본값 주입(런타임 ENV가 우선)
+      S3_BUCKET_DEFAULT="${s3_bucket_name}"
+      S3_PREFIX_DEFAULT="arxiv"
 
       : "$${DATASET:=Cornell-University/arxiv}"
       : "$${FILENAME:=arxiv-metadata-oai-snapshot.json}"
-      : "$${S3_BUCKET:=${s3_bucket_name}}"
-      : "$${S3_PREFIX:=arxiv}"
+      : "$${S3_BUCKET:=${S3_BUCKET_DEFAULT}}"
+      : "$${S3_PREFIX:=${S3_PREFIX_DEFAULT}}"
       SNAPSHOT_DATE="$${SNAPSHOT_DATE:-$(date -u +%Y%m%d)}"
 
       snap_key="$S3_PREFIX/snapshots/$SNAPSHOT_DATE/arxiv-metadata-oai-snapshot.json.gz"
@@ -53,27 +56,41 @@ write_files:
 
       workdir="$${TMPDIR:-/tmp}/arxiv_sync.$$"
       mkdir -p "$workdir"
+      echo "[*] workdir: $workdir"
       trap 'rm -rf "$workdir"' EXIT
 
-      echo "[*] Downloading ZIP from Kaggle..."
-      # --quiet 제거하여 진행률/로그 표시 (원하면 다시 붙이세요)
+      echo "[*] Downloading dataset from Kaggle..."
       kaggle datasets download -d "$DATASET" -f "$FILENAME" -p "$workdir"
 
       zip_path="$workdir/$FILENAME.zip"
-      if [ ! -s "$zip_path" ]; then
-        echo "[!] ZIP missing or empty"
+      raw_path="$workdir/$FILENAME"
+
+      echo "[*] Checking downloaded artifacts..."
+      ls -lah "$workdir" || true
+
+      if [ -s "$zip_path" ]; then
+        echo "[*] Detected ZIP file: $zip_path"
+        echo "[*] Streaming unzip -> pv -> gzip -> S3 upload..."
+        unzip -p "$zip_path" "$FILENAME" \
+          | pv -rab -i 2 \
+          | gzip -6 \
+          | aws s3 cp - "s3://$S3_BUCKET/$snap_key" \
+               --content-type "application/json" \
+               --content-encoding "gzip" \
+               --only-show-errors
+      elif [ -s "$raw_path" ]; then
+        echo "[*] Detected raw file (no zip): $raw_path"
+        echo "[*] Streaming raw -> pv -> gzip -> S3 upload..."
+        pv -rab -i 2 "$raw_path" \
+          | gzip -6 \
+          | aws s3 cp - "s3://$S3_BUCKET/$snap_key" \
+               --content-type "application/json" \
+               --content-encoding "gzip" \
+               --only-show-errors
+      else
+        echo "[!] Downloaded file not found (zip or raw)."
         exit 1
       fi
-
-      echo "[*] Streaming unzip -> pv -> gzip -> S3 upload..."
-      # unzip 표준출력 -> pv(진행률) -> gzip -> S3
-      unzip -p "$zip_path" "$FILENAME" \
-        | pv -rab -i 2 \
-        | gzip -6 \
-        | aws s3 cp - "s3://$S3_BUCKET/$snap_key" \
-             --content-type "application/json" \
-             --content-encoding "gzip" \
-             --only-show-errors
 
       echo "[*] Updating latest pointer s3://$S3_BUCKET/$latest_key"
       aws s3 cp "s3://$S3_BUCKET/$snap_key" "s3://$S3_BUCKET/$latest_key" --only-show-errors
@@ -96,14 +113,13 @@ write_files:
       PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
       HOME=/home/ubuntu
       KAGGLE_CONFIG_DIR=/home/ubuntu/.kaggle
-      KAGGLE_USERNAME=${kaggle_api_username}
-      KAGGLE_KEY=${kaggle_api_key}
+      # Terraform이 렌더한 버킷 이름을 ENV로 주입
       S3_BUCKET=${s3_bucket_name}
       S3_PREFIX=arxiv
       DATASET=Cornell-University/arxiv
       FILENAME=arxiv-metadata-oai-snapshot.json
       LOG_FILE=${dataset_log_path}
-      0 3 * * * ubuntu /home/ubuntu/backend/scripts/download-dataset.sh >> $LOG_FILE 2>&1
+      0 3 * * * ubuntu bash /home/ubuntu/backend/scripts/download-dataset.sh >> $LOG_FILE 2>&1
 
 runcmd:
   - chown ubuntu:ubuntu /home/ubuntu
@@ -137,5 +153,5 @@ runcmd:
   - chown ubuntu:ubuntu ${dataset_log_path} || true
   - chmod 0664 ${dataset_log_path} || true
 
-  # 최초 1회 실행 (env로 Kaggle 자격 증명 주입)
-  - su - ubuntu -c "env PATH=/usr/local/bin:/usr/bin:/bin KAGGLE_CONFIG_DIR=/home/ubuntu/.kaggle KAGGLE_USERNAME='${kaggle_api_username}' KAGGLE_KEY='${kaggle_api_key}' /home/ubuntu/backend/scripts/download-dataset.sh >> ${dataset_log_path} 2>&1 || true"
+  # 최초 1회 실행 (bash 명시 + S3_BUCKET/S3_PREFIX 주입)
+  - su - ubuntu -c "env PATH=/usr/local/bin:/usr/bin:/bin KAGGLE_CONFIG_DIR=/home/ubuntu/.kaggle S3_BUCKET='${s3_bucket_name}' S3_PREFIX='arxiv' bash /home/ubuntu/backend/scripts/download-dataset.sh >> ${dataset_log_path} 2>&1 || true"
