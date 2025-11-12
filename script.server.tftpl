@@ -1,11 +1,6 @@
 #cloud-config
 package_update: true
 
-bootcmd:
-  - mkdir -p /home/ubuntu/.kaggle
-  - chown ubuntu:ubuntu /home/ubuntu/.kaggle
-  - chmod 0700 /home/ubuntu/.kaggle
-
 write_files:
   - path: /home/ubuntu/app/docker-compose.postgres.yml
     permissions: '0644'
@@ -32,90 +27,6 @@ write_files:
       networks:
         inha-network:
           driver: bridge
-  - path: /home/ubuntu/backend/scripts/download-dataset.sh
-    permissions: '0755'
-    content: |
-      #!/usr/bin/env bash
-      set -euo pipefail
-
-      # Use ~/.kaggle/kaggle.json
-      export KAGGLE_CONFIG_DIR="$${KAGGLE_CONFIG_DIR:-/home/ubuntu/.kaggle}"
-
-      # 기본값(ENV가 있으면 ENV 우선)
-      : "$${DATASET:=Cornell-University/arxiv}"
-      : "$${FILENAME:=arxiv-metadata-oai-snapshot.json}"
-      : "$${S3_BUCKET:=${s3_bucket_name}}"
-      : "$${S3_PREFIX:=arxiv}"
-      SNAPSHOT_DATE="$${SNAPSHOT_DATE:-$(date -u +%Y%m%d)}"
-
-      snap_key="$S3_PREFIX/snapshots/$SNAPSHOT_DATE/arxiv-metadata-oai-snapshot.json.gz"
-      latest_key="$S3_PREFIX/latest.json.gz"
-
-      workdir="$${TMPDIR:-/tmp}/arxiv_sync.$$"
-      mkdir -p "$workdir"
-      echo "[*] workdir: $workdir"
-      trap 'rm -rf "$workdir"' EXIT
-
-      echo "[*] Downloading dataset from Kaggle..."
-      kaggle datasets download -d "$DATASET" -f "$FILENAME" -p "$workdir"
-
-      zip_path="$workdir/$FILENAME.zip"
-      raw_path="$workdir/$FILENAME"
-
-      echo "[*] Checking downloaded artifacts..."
-      ls -lah "$workdir" || true
-
-      if [ -s "$zip_path" ]; then
-        echo "[*] Detected ZIP file: $zip_path"
-        echo "[*] Streaming unzip -> pv -> gzip -> S3 upload..."
-        unzip -p "$zip_path" "$FILENAME" \
-          | pv -rab -i 2 \
-          | gzip -6 \
-          | aws s3 cp - "s3://$S3_BUCKET/$snap_key" \
-               --content-type "application/json" \
-               --content-encoding "gzip" \
-               --only-show-errors
-      elif [ -s "$raw_path" ]; then
-        echo "[*] Detected raw file (no zip): $raw_path"
-        echo "[*] Streaming raw -> pv -> gzip -> S3 upload..."
-        pv -rab -i 2 "$raw_path" \
-          | gzip -6 \
-          | aws s3 cp - "s3://$S3_BUCKET/$snap_key" \
-               --content-type "application/json" \
-               --content-encoding "gzip" \
-               --only-show-errors
-      else
-        echo "[!] Downloaded file not found (zip or raw)."
-        exit 1
-      fi
-
-      echo "[*] Updating latest pointer s3://$S3_BUCKET/$latest_key"
-      aws s3 cp "s3://$S3_BUCKET/$snap_key" "s3://$S3_BUCKET/$latest_key" --only-show-errors
-
-      echo "[*] Done."
-  - path: /home/ubuntu/.kaggle/kaggle.json
-    permissions: '0600'
-    owner: ubuntu:ubuntu
-    content: |
-      {"username":"${kaggle_api_username}","key":"${kaggle_api_key}"}
-  - path: ${dataset_log_path}
-    permissions: '0664'
-    owner: ubuntu:ubuntu
-    content: ""
-  - path: /etc/cron.d/arxiv_sync
-    permissions: '0644'
-    content: |
-      # Cron: 매일 KST 03:00 실행 (시스템 TZ=Asia/Seoul)
-      SHELL=/bin/bash
-      PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
-      HOME=/home/ubuntu
-      KAGGLE_CONFIG_DIR=/home/ubuntu/.kaggle
-      S3_BUCKET=${s3_bucket_name}
-      S3_PREFIX=arxiv
-      DATASET=Cornell-University/arxiv
-      FILENAME=arxiv-metadata-oai-snapshot.json
-      LOG_FILE=${dataset_log_path}
-      0 3 * * * ubuntu bash /home/ubuntu/backend/scripts/download-dataset.sh >> $LOG_FILE 2>&1
 
 runcmd:
   - chown ubuntu:ubuntu /home/ubuntu
@@ -138,16 +49,7 @@ runcmd:
   - systemctl enable docker
   - systemctl start docker
   - apt-get update -y
-  - apt-get install -y docker-compose-plugin unzip python3 python3-pip awscli pv
-  - pip3 install --no-cache-dir kaggle
+  - apt-get install -y docker-compose-plugin
 
   - bash -lc 'until docker info >/dev/null 2>&1; do sleep 2; done'
   - docker compose -f /home/ubuntu/app/docker-compose.postgres.yml up -d
-
-  # 로그 파일이 없으면 생성해 ubuntu가 쓸 수 있도록 보장
-  - bash -lc 'test -f ${dataset_log_path} || install -m 0664 -o ubuntu -g ubuntu /dev/null ${dataset_log_path}'
-  - chown ubuntu:ubuntu ${dataset_log_path} || true
-  - chmod 0664 ${dataset_log_path} || true
-
-  # 최초 1회 실행 (bash 명시 + S3_BUCKET/S3_PREFIX 주입)
-  - su - ubuntu -c "env PATH=/usr/local/bin:/usr/bin:/bin KAGGLE_CONFIG_DIR=/home/ubuntu/.kaggle S3_BUCKET='${s3_bucket_name}' S3_PREFIX='arxiv' bash /home/ubuntu/backend/scripts/download-dataset.sh >> ${dataset_log_path} 2>&1 || true"
