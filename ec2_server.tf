@@ -24,10 +24,6 @@ resource "aws_instance" "capstone_02_server_ec2" {
     postgres_password = var.postgres_password
   })
 
-  depends_on = [
-    aws_s3_bucket.arxiv
-  ]
-
   tags = {
     Name = "capstone_02_server_ec2"
   }
