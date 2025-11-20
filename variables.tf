@@ -1,3 +1,9 @@
+variable "project_name" {
+  description = "Project name for resource naming"
+  type        = string
+  default     = "capstone_02"
+}
+
 variable "mongodb_username" {
   description = "MongoDB root username"
   type        = string

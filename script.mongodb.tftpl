@@ -9,7 +9,7 @@ write_files:
       services:
         mongo:
           image: mongo:6
-          container_name: mongodb_prod
+          container_name: mongodb_${environment}
           restart: unless-stopped
           environment:
             - MONGO_INITDB_ROOT_USERNAME=${mongodb_username}
@@ -19,11 +19,11 @@ write_files:
           volumes:
             - mongo_data:/data/db
           networks:
-            - inha-network
+            - inha-network-${environment}
       volumes:
         mongo_data:
       networks:
-        inha-network:
+        inha-network-${environment}:
           driver: bridge
 
 runcmd:

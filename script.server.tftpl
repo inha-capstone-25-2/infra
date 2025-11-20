@@ -9,7 +9,7 @@ write_files:
       services:
         postgres:
           image: postgres:16
-          container_name: postgres_prod
+          container_name: postgres_${environment}
           restart: unless-stopped
           environment:
             - POSTGRES_USER=${postgres_username}
@@ -21,11 +21,11 @@ write_files:
           volumes:
             - postgres_data:/var/lib/postgresql/data
           networks:
-            - inha-network
+            - inha-network-${environment}
       volumes:
         postgres_data:
       networks:
-        inha-network:
+        inha-network-${environment}:
           driver: bridge
 
 runcmd:

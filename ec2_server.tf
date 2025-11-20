@@ -1,4 +1,4 @@
-resource "aws_instance" "capstone_02_server_ec2" {
+resource "aws_instance" "server_ec2" {
   ami                    = data.aws_ami.ubuntu2204.id
   instance_type          = var.server_instance_type
   subnet_id              = data.aws_subnets.in_vpc.ids[0]
@@ -22,9 +22,11 @@ resource "aws_instance" "capstone_02_server_ec2" {
   user_data = templatefile("${path.module}/script.server.tftpl", {
     postgres_username = var.postgres_username
     postgres_password = var.postgres_password
+    environment       = local.environment
   })
 
   tags = {
-    Name = "capstone_02_server_ec2"
+    Name        = "${var.project_name}_${local.environment}_server_ec2"
+    Environment = local.environment
   }
 }

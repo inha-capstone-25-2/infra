@@ -1,4 +1,8 @@
-resource "aws_instance" "capstone_02_mongodb_ec2" {
+locals {
+  environment = terraform.workspace == "default" ? "prod" : terraform.workspace
+}
+
+resource "aws_instance" "mongodb_ec2" {
   ami                    = data.aws_ami.ubuntu2204.id
   instance_type          = var.mongodb_instance_type
   subnet_id              = data.aws_subnets.in_vpc.ids[0]
@@ -22,9 +26,11 @@ resource "aws_instance" "capstone_02_mongodb_ec2" {
   user_data = templatefile("${path.module}/script.mongodb.tftpl", {
     mongodb_username = var.mongodb_username
     mongodb_password = var.mongodb_password
+    environment      = local.environment
   })
 
   tags = {
-    Name = "capstone_02_mongodb_ec2"
+    Name        = "${var.project_name}_${local.environment}_mongodb_ec2"
+    Environment = local.environment
   }
 }
