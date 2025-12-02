@@ -25,6 +25,7 @@ write_files:
       volumes:
         mongo_data:
         mongo_keyfile:
+          external: true
       networks:
         inha-network-${environment}:
           driver: bridge
