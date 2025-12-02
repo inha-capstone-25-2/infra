@@ -11,7 +11,7 @@ write_files:
           image: mongo:6
           container_name: mongodb_${environment}
           restart: unless-stopped
-          command: ["mongod", "--replSet", "rs0", "--bind_ip_all"]
+          command: ["mongod", "--replSet", "rs0", "--bind_ip_all", "--keyFile", "/data/keyfile/mongodb-keyfile"]
           environment:
             - MONGO_INITDB_ROOT_USERNAME=${mongodb_username}
             - MONGO_INITDB_ROOT_PASSWORD=${mongodb_password}
@@ -19,13 +19,27 @@ write_files:
             - "27017:27017"
           volumes:
             - mongo_data:/data/db
+            - mongo_keyfile:/data/keyfile
           networks:
             - inha-network-${environment}
       volumes:
         mongo_data:
+        mongo_keyfile:
       networks:
         inha-network-${environment}:
           driver: bridge
+  
+  - path: /home/ubuntu/app/init-keyfile.sh
+    permissions: "0755"
+    content: |
+      #!/bin/bash
+      # Create keyfile for replica set authentication
+      docker run --rm -v mongo_keyfile:/data/keyfile mongo:6 bash -c "
+        openssl rand -base64 756 > /data/keyfile/mongodb-keyfile
+        chmod 400 /data/keyfile/mongodb-keyfile
+        chown 999:999 /data/keyfile/mongodb-keyfile
+      "
+      echo "MongoDB keyfile created successfully"
   
   - path: /home/ubuntu/app/init-replica-set.sh
     permissions: "0755"
@@ -66,11 +80,14 @@ runcmd:
   - systemctl enable --now docker
   - usermod -aG docker ubuntu || true
 
-  # 3) 앱 디렉터리 권한 및 실행
+  # 3) 앱 디렉터리 권한 및 keyfile 생성
   - mkdir -p /home/ubuntu/app
   - chown -R ubuntu:ubuntu /home/ubuntu/app
+  - /home/ubuntu/app/init-keyfile.sh
+  
+  # 4) MongoDB 시작
   - su - ubuntu -c "docker compose -f /home/ubuntu/app/docker-compose.mongodb.yml up -d"
   
-  # 4) Replica Set 초기화
+  # 5) Replica Set 초기화
   - sleep 15
   - /home/ubuntu/app/init-replica-set.sh
