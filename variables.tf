@@ -69,7 +69,13 @@ variable "server_instance_type" {
 variable "mongodb_instance_type" {
   description = "Instance type for MongoDB EC2"
   type        = string
-  default     = "t3.medium"
+  default     = "t3.xlarge"
+}
+
+variable "es_instance_type" {
+  description = "Instance type for Elasticsearch EC2"
+  type        = string
+  default     = "t3.xlarge"
 }
 
 variable "server_root_volume_size" {
@@ -82,6 +88,12 @@ variable "mongodb_root_volume_size" {
   description = "Root EBS size (GB) for MongoDB EC2"
   type        = number
   default     = 30
+}
+
+variable "es_root_volume_size" {
+  description = "Root EBS size (GB) for Elasticsearch EC2"
+  type        = number
+  default     = 50
 }
 
 variable "root_volume_type" {

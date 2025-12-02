@@ -4,11 +4,13 @@
 
 ## 인프라 구성
 
-- **EC2 인스턴스 2개**
-  - MongoDB 전용 인스턴스 (t3.medium, 30GB)
+- **EC2 인스턴스 3개**
+  - MongoDB 전용 인스턴스 (t3.xlarge, 30GB)
+  - Elasticsearch & Monstache 인스턴스 (t3.xlarge, 50GB)
   - 애플리케이션 서버 + PostgreSQL (t3.medium, 30GB)
 - **공통 리소스 (환경별 공유)**
   - VPC, Security Group, IAM Instance Profile, Key Pair
+
 
 ## Terraform Workspace
 
@@ -107,17 +109,19 @@ terraform workspace delete dev
 
 - **형식**: `{project_name}_{environment}_{resource_type}`
 - **예시**:
-  - Prod (default): `capstone_02_prod_mongodb_ec2`, `capstone_02_prod_server_ec2`
-  - Dev: `capstone_02_dev_mongodb_ec2`, `capstone_02_dev_server_ec2`
+  - Prod (default): `capstone_02_prod_mongodb_ec2`, `capstone_02_prod_server_ec2`, `capstone_02_prod_es_ec2`
+  - Dev: `capstone_02_dev_mongodb_ec2`, `capstone_02_dev_server_ec2`, `capstone_02_dev_es_ec2`
+
 
 ## 환경별 차이점
 
 ### 공통 설정 (모든 환경 동일)
 - VPC, Security Group, Key Pair
 - IAM Instance Profile
-- 인스턴스 타입 (t3.medium)
-- 볼륨 크기 (30GB)
+- 인스턴스 타입 (Server: t3.medium, MongoDB: t3.xlarge, ES: t3.xlarge)
+- 볼륨 크기 (Server/MongoDB: 30GB, ES: 50GB)
 - 데이터베이스 자격증명
+
 
 ### 환경별 차이
 - **EC2 인스턴스 이름**: workspace에 따라 자동 생성
@@ -137,14 +141,18 @@ terraform output
 # mongodb_public_ip = "xx.xx.xx.xx"
 # server_public_dns = "ec2-xx-xx-xx-xx.us-west-2.compute.amazonaws.com"
 # server_public_ip = "xx.xx.xx.xx"
+# es_public_dns = "ec2-xx-xx-xx-xx.us-west-2.compute.amazonaws.com"
+# es_public_ip = "xx.xx.xx.xx"
 ```
+
 
 ## 주의사항
 
 1. **Prod 환경 보호**: default workspace(prod)에서 작업 시 매우 신중하게 진행하세요.
-2. **비용**: 각 환경마다 EC2 인스턴스 2개가 생성되어 비용이 발생합니다.
+2. **비용**: 각 환경마다 EC2 인스턴스 3개가 생성되어 비용이 발생합니다.
 3. **State 관리**: 각 workspace는 별도의 state 파일을 유지합니다.
 4. **리소스 충돌**: 동일한 workspace에서 여러 번 apply하면 리소스가 중복 생성되지 않습니다.
+
 
 ## 검증
 

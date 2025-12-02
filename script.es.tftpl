@@ -1,0 +1,143 @@
+#!/bin/bash
+set -e
+
+# Update system
+apt-get update
+apt-get upgrade -y
+
+# Install prerequisites
+apt-get install -y apt-transport-https ca-certificates curl gnupg lsb-release
+
+# Install Docker
+curl -fsSL https://get.docker.com -o get-docker.sh
+sh get-docker.sh
+systemctl enable docker
+systemctl start docker
+
+# Install Docker Compose
+curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+chmod +x /usr/local/bin/docker-compose
+
+# Create app directory
+mkdir -p /opt/elasticsearch
+cd /opt/elasticsearch
+
+# Create docker-compose.yml
+cat > docker-compose.yml <<'EOF'
+version: '3.8'
+
+services:
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.11.0
+    container_name: elasticsearch
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - "ES_JAVA_OPTS=-Xms2g -Xmx2g"
+    ports:
+      - "9200:9200"
+      - "9300:9300"
+    volumes:
+      - es_data:/usr/share/elasticsearch/data
+    restart: unless-stopped
+    networks:
+      - es-network
+
+  monstache:
+    image: rwynn/monstache:latest
+    container_name: monstache
+    depends_on:
+      - elasticsearch
+    command: -f /config/monstache.toml
+    volumes:
+      - ./monstache.toml:/config/monstache.toml
+    restart: unless-stopped
+    networks:
+      - es-network
+
+volumes:
+  es_data:
+    driver: local
+
+networks:
+  es-network:
+    driver: bridge
+EOF
+
+# Create Monstache configuration
+cat > monstache.toml <<'EOF'
+# MongoDB connection
+mongo-url = "mongodb://${mongodb_username}:${mongodb_password}@${mongodb_host}:27017/rsrs_${environment}?authSource=admin"
+
+# Elasticsearch connection
+elasticsearch-urls = ["http://elasticsearch:9200"]
+
+# Sync settings
+direct-read-namespaces = ["rsrs_${environment}.papers"]
+change-stream-namespaces = ["rsrs_${environment}.papers"]
+
+# Indexing settings
+elasticsearch-max-conns = 10
+elasticsearch-max-seconds = 5
+
+# Logging
+verbose = true
+stats = true
+index-stats = true
+
+# Enable change streams (MongoDB 4.0+)
+change-stream-namespaces = ["rsrs_${environment}.papers"]
+
+# Mapping configuration
+[[mapping]]
+namespace = "rsrs_${environment}.papers"
+index = "papers"
+
+# Resume strategy
+resume = true
+resume-strategy = 1
+EOF
+
+# Set proper permissions
+chmod 644 docker-compose.yml monstache.toml
+
+# Start services
+docker-compose up -d
+
+# Wait for Elasticsearch to be ready
+echo "Waiting for Elasticsearch to be ready..."
+until curl -s http://localhost:9200/_cluster/health | grep -q '"status":"green"\|"status":"yellow"'; do
+  sleep 5
+done
+
+echo "Elasticsearch and Monstache setup completed successfully!"
+
+# Create index with proper mapping
+curl -X PUT "localhost:9200/papers" -H 'Content-Type: application/json' -d'
+{
+  "settings": {
+    "number_of_shards": 1,
+    "number_of_replicas": 0,
+    "analysis": {
+      "analyzer": {
+        "default": {
+          "type": "standard"
+        }
+      }
+    }
+  },
+  "mappings": {
+    "properties": {
+      "id": { "type": "keyword" },
+      "title": { "type": "text" },
+      "abstract": { "type": "text" },
+      "authors": { "type": "text" },
+      "categories": { "type": "keyword" },
+      "published": { "type": "date" },
+      "updated": { "type": "date" }
+    }
+  }
+}
+'
+
+echo "Index mapping created successfully!"
