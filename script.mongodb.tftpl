@@ -29,18 +29,6 @@ write_files:
         inha-network-${environment}:
           driver: bridge
   
-  - path: /home/ubuntu/app/init-keyfile.sh
-    permissions: "0755"
-    content: |
-      #!/bin/bash
-      # Create keyfile for replica set authentication
-      docker run --rm -v mongo_keyfile:/data/keyfile mongo:6 bash -c "
-        openssl rand -base64 756 > /data/keyfile/mongodb-keyfile
-        chmod 400 /data/keyfile/mongodb-keyfile
-        chown 999:999 /data/keyfile/mongodb-keyfile
-      "
-      echo "MongoDB keyfile created successfully"
-  
   - path: /home/ubuntu/app/init-replica-set.sh
     permissions: "0755"
     content: |
@@ -80,14 +68,24 @@ runcmd:
   - systemctl enable --now docker
   - usermod -aG docker ubuntu || true
 
-  # 3) 앱 디렉터리 권한 및 keyfile 생성
+  # 3) 앱 디렉터리 및 Docker 볼륨 준비
   - mkdir -p /home/ubuntu/app
   - chown -R ubuntu:ubuntu /home/ubuntu/app
-  - /home/ubuntu/app/init-keyfile.sh
   
-  # 4) MongoDB 시작
+  # 4) Docker 볼륨 먼저 생성
+  - docker volume create mongo_keyfile
+  
+  # 5) keyFile 생성 (볼륨이 이미 존재하므로 안전)
+  - |
+    docker run --rm -v mongo_keyfile:/data/keyfile mongo:6 bash -c "
+      openssl rand -base64 756 > /data/keyfile/mongodb-keyfile
+      chmod 400 /data/keyfile/mongodb-keyfile
+      chown 999:999 /data/keyfile/mongodb-keyfile
+    "
+  
+  # 6) MongoDB 시작
   - su - ubuntu -c "docker compose -f /home/ubuntu/app/docker-compose.mongodb.yml up -d"
   
-  # 5) Replica Set 초기화
+  # 7) Replica Set 초기화
   - sleep 15
   - /home/ubuntu/app/init-replica-set.sh
