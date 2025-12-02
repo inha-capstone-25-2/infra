@@ -85,17 +85,14 @@ verbose = true
 stats = true
 index-stats = true
 
-# Enable change streams (MongoDB 4.0+)
-change-stream-namespaces = ["rsrs_${environment}.papers"]
+# Resume strategy (글로벌 설정)
+resume = true
+resume-strategy = 1
 
 # Mapping configuration
 [[mapping]]
 namespace = "rsrs_${environment}.papers"
 index = "papers"
-
-# Resume strategy
-resume = true
-resume-strategy = 1
 EOF
 
 # Set proper permissions
