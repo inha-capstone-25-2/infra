@@ -34,11 +34,30 @@ write_files:
     permissions: "0755"
     content: |
       #!/bin/bash
-      echo "Waiting for MongoDB to start..."
-      sleep 10
+      set -e
       
-      echo "Initializing replica set..."
-      docker exec mongodb_${environment} mongosh --quiet --eval '
+      MONGODB_CONTAINER="mongodb_${environment}"
+      MAX_ATTEMPTS=30
+      ATTEMPT=0
+      
+      echo "Waiting for MongoDB to be ready..."
+      
+      # MongoDB가 연결 가능할 때까지 대기
+      until docker exec $MONGODB_CONTAINER mongosh --quiet --eval "db.adminCommand('ping')" -u ${mongodb_username} -p ${mongodb_password} --authenticationDatabase admin > /dev/null 2>&1
+      do
+        ATTEMPT=$((ATTEMPT+1))
+        if [ $ATTEMPT -eq $MAX_ATTEMPTS ]; then
+          echo "ERROR: MongoDB did not start within $(($MAX_ATTEMPTS * 2)) seconds"
+          exit 1
+        fi
+        echo "Attempt $ATTEMPT/$MAX_ATTEMPTS: MongoDB not ready yet, waiting..."
+        sleep 2
+      done
+      
+      echo "MongoDB is ready! Initializing replica set..."
+      
+      # Replica Set 초기화
+      docker exec $MONGODB_CONTAINER mongosh --quiet --eval '
         try {
           rs.status();
           print("Replica set already initialized");
@@ -50,6 +69,8 @@ write_files:
           print("Replica set initialized successfully");
         }
       ' -u ${mongodb_username} -p ${mongodb_password} --authenticationDatabase admin
+      
+      echo "Replica set initialization complete!"
 
 runcmd:
   # 1) Docker 공식 저장소 설정
@@ -87,6 +108,5 @@ runcmd:
   # 6) MongoDB 시작
   - su - ubuntu -c "docker compose -f /home/ubuntu/app/docker-compose.mongodb.yml up -d"
   
-  # 7) Replica Set 초기화
-  - sleep 15
+  # 7) Replica Set 초기화 (스크립트 내부에서 MongoDB 준비 상태 확인)
   - /home/ubuntu/app/init-replica-set.sh
