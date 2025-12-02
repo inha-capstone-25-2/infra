@@ -11,6 +11,7 @@ write_files:
           image: mongo:6
           container_name: mongodb_${environment}
           restart: unless-stopped
+          command: ["mongod", "--replSet", "rs0", "--bind_ip_all"]
           environment:
             - MONGO_INITDB_ROOT_USERNAME=${mongodb_username}
             - MONGO_INITDB_ROOT_PASSWORD=${mongodb_password}
@@ -25,6 +26,27 @@ write_files:
       networks:
         inha-network-${environment}:
           driver: bridge
+  
+  - path: /home/ubuntu/app/init-replica-set.sh
+    permissions: "0755"
+    content: |
+      #!/bin/bash
+      echo "Waiting for MongoDB to start..."
+      sleep 10
+      
+      echo "Initializing replica set..."
+      docker exec mongodb_${environment} mongosh --quiet --eval '
+        try {
+          rs.status();
+          print("Replica set already initialized");
+        } catch(e) {
+          rs.initiate({
+            _id: "rs0",
+            members: [{ _id: 0, host: "localhost:27017" }]
+          });
+          print("Replica set initialized successfully");
+        }
+      ' -u ${mongodb_username} -p ${mongodb_password} --authenticationDatabase admin
 
 runcmd:
   # 1) Docker 공식 저장소 설정
@@ -48,3 +70,7 @@ runcmd:
   - mkdir -p /home/ubuntu/app
   - chown -R ubuntu:ubuntu /home/ubuntu/app
   - su - ubuntu -c "docker compose -f /home/ubuntu/app/docker-compose.mongodb.yml up -d"
+  
+  # 4) Replica Set 초기화
+  - sleep 15
+  - /home/ubuntu/app/init-replica-set.sh
