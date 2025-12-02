@@ -19,6 +19,8 @@ resource "aws_instance" "es_ec2" {
 
   user_data_replace_on_change = true
 
+  depends_on = [aws_instance.mongodb_ec2]
+
   user_data = templatefile("${path.module}/script.es.tftpl", {
     mongodb_host     = aws_instance.mongodb_ec2.private_ip
     mongodb_username = var.mongodb_username

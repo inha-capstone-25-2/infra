@@ -6,7 +6,7 @@ apt-get update
 apt-get upgrade -y
 
 # Install prerequisites
-apt-get install -y apt-transport-https ca-certificates curl gnupg lsb-release
+apt-get install -y apt-transport-https ca-certificates curl gnupg lsb-release netcat-openbsd
 
 # Install Docker
 curl -fsSL https://get.docker.com -o get-docker.sh
@@ -42,16 +42,22 @@ services:
     restart: unless-stopped
     networks:
       - es-network
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9200/_cluster/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
 
   monstache:
     image: rwynn/monstache:latest
     container_name: monstache
     depends_on:
-      - elasticsearch
+      elasticsearch:
+        condition: service_healthy
     command: -f /config/monstache.toml
     volumes:
       - ./monstache.toml:/config/monstache.toml
-    restart: unless-stopped
+    restart: on-failure:10
     networks:
       - es-network
 
@@ -97,6 +103,27 @@ EOF
 
 # Set proper permissions
 chmod 644 docker-compose.yml monstache.toml
+
+# Wait for MongoDB to be accessible
+echo "Waiting for MongoDB to be accessible..."
+MONGODB_HOST="${mongodb_host}"
+MONGODB_USER="${mongodb_username}"
+MONGODB_PASS="${mongodb_password}"
+
+MAX_RETRIES=30
+RETRY_COUNT=0
+
+until nc -z $MONGODB_HOST 27017 || [ $RETRY_COUNT -eq $MAX_RETRIES ]; do
+  echo "Waiting for MongoDB at $MONGODB_HOST:27017... ($RETRY_COUNT/$MAX_RETRIES)"
+  sleep 10
+  RETRY_COUNT=$((RETRY_COUNT + 1))
+done
+
+if [ $RETRY_COUNT -eq $MAX_RETRIES ]; then
+  echo "WARNING: MongoDB not accessible after $MAX_RETRIES attempts. Starting services anyway..."
+else
+  echo "MongoDB is accessible!"
+fi
 
 # Start services
 docker-compose up -d
