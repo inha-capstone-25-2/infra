@@ -40,7 +40,11 @@ write_files:
       MAX_ATTEMPTS=30
       ATTEMPT=0
       
+      # 실제 Private IP 가져오기
+      PRIVATE_IP=$(hostname -I | awk '{print $1}')
+      
       echo "Waiting for MongoDB to be ready..."
+      echo "MongoDB Private IP: $PRIVATE_IP"
       
       # MongoDB가 연결 가능할 때까지 대기
       until docker exec $MONGODB_CONTAINER mongosh --quiet --eval "db.adminCommand('ping')" -u ${mongodb_username} -p ${mongodb_password} --authenticationDatabase admin > /dev/null 2>&1
@@ -56,19 +60,19 @@ write_files:
       
       echo "MongoDB is ready! Initializing replica set..."
       
-      # Replica Set 초기화
-      docker exec $MONGODB_CONTAINER mongosh --quiet --eval '
+      # Replica Set 초기화 (Private IP 사용)
+      docker exec $MONGODB_CONTAINER mongosh --quiet --eval "
         try {
           rs.status();
-          print("Replica set already initialized");
+          print('Replica set already initialized');
         } catch(e) {
           rs.initiate({
-            _id: "rs0",
-            members: [{ _id: 0, host: "localhost:27017" }]
+            _id: 'rs0',
+            members: [{ _id: 0, host: '$PRIVATE_IP:27017' }]
           });
-          print("Replica set initialized successfully");
+          print('Replica set initialized successfully with host: $PRIVATE_IP:27017');
         }
-      ' -u ${mongodb_username} -p ${mongodb_password} --authenticationDatabase admin
+      " -u ${mongodb_username} -p ${mongodb_password} --authenticationDatabase admin
       
       echo "Replica set initialization complete!"
 
