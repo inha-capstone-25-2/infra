@@ -8,6 +8,8 @@ resource "aws_instance" "mongodb_ec2" {
   subnet_id              = data.aws_subnets.in_vpc.ids[0]
   vpc_security_group_ids = [data.aws_security_group.capstone_02_sg.id]
 
+  private_ip = var.mongodb_private_ip
+
   key_name             = var.key_name
   iam_instance_profile = data.aws_iam_instance_profile.safe_profile.name
 
