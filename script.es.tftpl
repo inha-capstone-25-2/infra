@@ -73,14 +73,14 @@ EOF
 # Create Monstache configuration
 cat > monstache.toml <<'EOF'
 # MongoDB connection
-mongo-url = "mongodb://${mongodb_username}:${mongodb_password}@${mongodb_host}:27017/rsrs_${environment}?authSource=admin"
+mongo-url = "mongodb://${mongodb_username}:${mongodb_password}@${mongodb_host}:27017/arxiv?authSource=admin"
 
 # Elasticsearch connection
 elasticsearch-urls = ["http://elasticsearch:9200"]
 
 # Sync settings
-direct-read-namespaces = ["rsrs_${environment}.papers"]
-change-stream-namespaces = ["rsrs_${environment}.papers"]
+direct-read-namespaces = ["arxiv.papers"]
+change-stream-namespaces = ["arxiv.papers"]
 
 # Indexing settings
 elasticsearch-max-conns = 10
@@ -97,7 +97,7 @@ resume-strategy = 1
 
 # Mapping configuration
 [[mapping]]
-namespace = "rsrs_${environment}.papers"
+namespace = "arxiv.papers"
 index = "papers"
 EOF
 
