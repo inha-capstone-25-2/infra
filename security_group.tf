@@ -36,31 +36,34 @@ resource "aws_security_group" "capstone_02_sg" {
     description = "FastAPI access"
   }
 
-  # MongoDB - VPC 내부만 접근 가능
+  # MongoDB - VPC 내부 및 같은 보안 그룹 내 접근 허용
   ingress {
     from_port   = 27017
     to_port     = 27017
     protocol    = "tcp"
     cidr_blocks = [data.aws_vpc.capstone_vpc.cidr_block]
-    description = "MongoDB access from VPC only"
- }
+    self        = true
+    description = "MongoDB access from VPC and self"
+  }
 
-  # Elasticsearch - VPC 내부만 접근 가능
+  # Elasticsearch - VPC 내부 및 같은 보안 그룹 내 접근 허용
   ingress {
     from_port   = 9200
     to_port     = 9200
     protocol    = "tcp"
     cidr_blocks = [data.aws_vpc.capstone_vpc.cidr_block]
-    description = "Elasticsearch access from VPC only"
+    self        = true
+    description = "Elasticsearch access from VPC and self"
   }
 
-  # PostgreSQL - VPC 내부만 접근 가능
+  # PostgreSQL - VPC 내부 및 같은 보안 그룹 내 접근 허용
   ingress {
     from_port   = 5432
     to_port     = 5432
     protocol    = "tcp"
     cidr_blocks = [data.aws_vpc.capstone_vpc.cidr_block]
-    description = "PostgreSQL access from VPC only"
+    self        = true
+    description = "PostgreSQL access from VPC and self"
   }
 
   # 모든 아웃바운드 트래픽 허용
