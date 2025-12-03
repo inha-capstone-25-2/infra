@@ -17,12 +17,12 @@ write_files:
             "--bind_ip_all",
             "--keyFile", "/data/keyfile/mongodb-keyfile",
             "--wiredTigerCacheSizeGB", "10",
-            "--wiredTigerCheckpointDelaySecs", "300",
             "--wiredTigerJournalCompressor", "snappy",
             "--wiredTigerCollectionBlockCompressor", "snappy",
             "--wiredTigerIndexPrefixCompression", "true",
             "--setParameter", "wiredTigerConcurrentReadTransactions=256",
             "--setParameter", "wiredTigerConcurrentWriteTransactions=256",
+            "--setParameter", "syncdelay=300",
             "--oplogSize", "2048"
           ]
           environment:
