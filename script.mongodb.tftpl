@@ -77,6 +77,18 @@ write_files:
       echo "Replica set initialization complete!"
 
 runcmd:
+  # 0) 스왑 메모리 설정 (4GB)
+  - |
+    if [ ! -f /swapfile ]; then
+      fallocate -l 4G /swapfile
+      chmod 600 /swapfile
+      mkswap /swapfile
+      swapon /swapfile
+      echo '/swapfile none swap sw 0 0' >> /etc/fstab
+      sysctl vm.swappiness=10
+      echo 'vm.swappiness=10' >> /etc/sysctl.conf
+    fi
+
   # 1) Docker 공식 저장소 설정
   - apt-get install -y ca-certificates curl gnupg
   - install -m 0755 -d /etc/apt/keyrings
