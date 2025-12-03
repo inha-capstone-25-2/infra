@@ -5,8 +5,8 @@ data "aws_vpc" "capstone_vpc" {
 
 # 기존 보안 그룹을 Terraform으로 관리
 resource "aws_security_group" "capstone_02_sg" {
-  name        = "capstone-02-sg"
-  description = "Security group for Capstone project - Managed by Terraform"
+  name        = "launch-wizard-22"
+  description = "launch-wizard-22 created 2025-10-11T10:12:32.320Z"
   vpc_id      = data.aws_vpc.capstone_vpc.id
 
   # SSH - PEM 키를 통한 접근
@@ -43,7 +43,7 @@ resource "aws_security_group" "capstone_02_sg" {
     protocol    = "tcp"
     cidr_blocks = [data.aws_vpc.capstone_vpc.cidr_block]
     description = "MongoDB access from VPC only"
-  }
+ }
 
   # Elasticsearch - VPC 내부만 접근 가능
   ingress {
@@ -73,13 +73,7 @@ resource "aws_security_group" "capstone_02_sg" {
   }
 
   tags = {
-    Name        = "capstone-02-sg"
-    ManagedBy   = "Terraform"
-    Environment = local.environment
-  }
-
-  lifecycle {
-    # 기존 보안 그룹을 import할 때 충돌 방지
-    create_before_destroy = false
+    group    = "inha-capstone"
+    username = "inha-capstone-02"
   }
 }
