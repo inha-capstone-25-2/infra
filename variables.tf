@@ -108,22 +108,22 @@ variable "dataset_log_path" {
   default     = "/var/log/arxiv_sync.log"
 }
 
-# 고정 Private IP 주소
+# 고정 Private IP 주소 (서브넷 범위: 172.31.48.0/20)
 variable "server_private_ip" {
   description = "Fixed private IP for Server EC2"
   type        = string
-  default     = "172.31.10.10"
+  default     = "172.31.48.10"
 }
 
 variable "mongodb_private_ip" {
   description = "Fixed private IP for MongoDB EC2"
   type        = string
-  default     = "172.31.10.20"
+  default     = "172.31.48.20"
 }
 
 variable "es_private_ip" {
   description = "Fixed private IP for Elasticsearch EC2"
   type        = string
-  default     = "172.31.10.30"
+  default     = "172.31.48.30"
 }
 
