@@ -11,7 +11,20 @@ write_files:
           image: mongo:6
           container_name: mongodb_${environment}
           restart: unless-stopped
-          command: ["mongod", "--replSet", "rs0", "--bind_ip_all", "--keyFile", "/data/keyfile/mongodb-keyfile"]
+          command: [
+            "mongod",
+            "--replSet", "rs0",
+            "--bind_ip_all",
+            "--keyFile", "/data/keyfile/mongodb-keyfile",
+            "--wiredTigerCacheSizeGB", "10",
+            "--wiredTigerCheckpointDelaySecs", "300",
+            "--wiredTigerJournalCompressor", "snappy",
+            "--wiredTigerCollectionBlockCompressor", "snappy",
+            "--wiredTigerIndexPrefixCompression", "true",
+            "--setParameter", "wiredTigerConcurrentReadTransactions=256",
+            "--setParameter", "wiredTigerConcurrentWriteTransactions=256",
+            "--oplogSize", "2048"
+          ]
           environment:
             - MONGO_INITDB_ROOT_USERNAME=${mongodb_username}
             - MONGO_INITDB_ROOT_PASSWORD=${mongodb_password}
