@@ -78,6 +78,12 @@ variable "es_instance_type" {
   default     = "t3.xlarge"
 }
 
+variable "nlp_instance_type" {
+  description = "Instance type for NLP EC2"
+  type        = string
+  default     = "t3.xlarge"
+}
+
 variable "server_root_volume_size" {
   description = "Root EBS size (GB) for server EC2"
   type        = number
@@ -92,6 +98,12 @@ variable "mongodb_root_volume_size" {
 
 variable "es_root_volume_size" {
   description = "Root EBS size (GB) for Elasticsearch EC2"
+  type        = number
+  default     = 50
+}
+
+variable "nlp_root_volume_size" {
+  description = "Root EBS size (GB) for NLP EC2"
   type        = number
   default     = 50
 }
@@ -125,5 +137,11 @@ variable "es_private_ip" {
   description = "Fixed private IP for Elasticsearch EC2"
   type        = string
   default     = "172.31.48.30"
+}
+
+variable "nlp_private_ip" {
+  description = "Fixed private IP for NLP EC2"
+  type        = string
+  default     = "172.31.48.40"
 }
 

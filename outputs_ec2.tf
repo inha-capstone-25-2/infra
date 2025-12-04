@@ -42,3 +42,13 @@ output "es_private_ip" {
   value       = aws_instance.es_ec2.private_ip
   description = "Private IP of Elasticsearch EC2"
 }
+
+output "nlp_ec2_id" {
+  value       = aws_instance.nlp_ec2.id
+  description = "ID of NLP EC2"
+}
+
+output "nlp_private_ip" {
+  value       = aws_instance.nlp_ec2.private_ip
+  description = "Private IP of NLP EC2"
+}
