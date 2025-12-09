@@ -158,7 +158,16 @@ curl -X PUT "localhost:9200/papers" -H 'Content-Type: application/json' -d'
       "authors": { "type": "text" },
       "categories": { "type": "keyword" },
       "published": { "type": "date" },
-      "updated": { "type": "date" }
+      "updated": { "type": "date" },
+      "update_date": { "type": "date" },
+      "view_count": { "type": "integer" },
+      "bookmark_count": { "type": "integer" },
+      "summary": {
+        "properties": {
+          "en": { "type": "text" },
+          "ko": { "type": "text" }
+        }
+      }
     }
   }
 }

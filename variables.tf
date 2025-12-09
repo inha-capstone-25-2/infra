@@ -93,7 +93,7 @@ variable "server_root_volume_size" {
 variable "mongodb_root_volume_size" {
   description = "Root EBS size (GB) for MongoDB EC2"
   type        = number
-  default     = 30
+  default     = 100
 }
 
 variable "es_root_volume_size" {
