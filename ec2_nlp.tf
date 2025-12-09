@@ -16,7 +16,7 @@ resource "aws_instance" "nlp_ec2" {
   }
 
   lifecycle {
-    ignore_changes = [tags, tags_all]
+    ignore_changes = [tags, tags_all, root_block_device]
   }
 
   tags = {

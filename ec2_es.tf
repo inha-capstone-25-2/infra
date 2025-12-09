@@ -16,7 +16,7 @@ resource "aws_instance" "es_ec2" {
   }
 
   lifecycle {
-    ignore_changes = [tags, tags_all]
+    ignore_changes = [tags, tags_all, root_block_device]
   }
 
   user_data_replace_on_change = true
