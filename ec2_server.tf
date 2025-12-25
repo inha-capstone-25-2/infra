@@ -1,8 +1,8 @@
 resource "aws_instance" "server_ec2" {
   ami                    = data.aws_ami.ubuntu2204.id
   instance_type          = var.server_instance_type
-  subnet_id              = data.aws_subnets.in_vpc.ids[0]
-  vpc_security_group_ids = [data.aws_security_group.capstone_02_sg.id]
+  subnet_id              = aws_subnet.public.id
+  vpc_security_group_ids = [aws_security_group.main.id]
 
   private_ip = var.server_private_ip
 
