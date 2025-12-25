@@ -13,7 +13,7 @@ write_files:
           restart: unless-stopped
           environment:
             - POSTGRES_USER=${postgres_username}
-            - POSTGRES_PASSWORD=${postgres_password}
+            - POSTGRES_PASSWORD=$${POSTGRES_PASSWORD}
             - POSTGRES_DB=rsrs
             - PGDATA=/var/lib/postgresql/data
           ports:
@@ -49,7 +49,23 @@ runcmd:
   - systemctl enable docker
   - systemctl start docker
   - apt-get update -y
-  - apt-get install -y docker-compose-plugin
+  - apt-get install -y docker-compose-plugin awscli jq
 
   - bash -lc 'until docker info >/dev/null 2>&1; do sleep 2; done'
-  - docker compose -f /home/ubuntu/app/docker-compose.postgres.yml up -d
+  
+  # Postgres Password 가져오기 (SSM Parameter Store)
+  - |
+    POSTGRES_PASSWORD=$(aws ssm get-parameter \
+      --name "/${project_name}/${environment}/postgres/password" \
+      --with-decryption \
+      --region ${region} \
+      --query "Parameter.Value" \
+      --output text)
+
+    if [ -z "$POSTGRES_PASSWORD" ]; then
+      echo "Failed to retrieve Postgres password from SSM"
+      exit 1
+    fi
+ 
+    export POSTGRES_PASSWORD=$POSTGRES_PASSWORD
+    docker compose -f /home/ubuntu/app/docker-compose.postgres.yml up -d

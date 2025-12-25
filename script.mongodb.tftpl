@@ -27,7 +27,7 @@ write_files:
           ]
           environment:
             - MONGO_INITDB_ROOT_USERNAME=${mongodb_username}
-            - MONGO_INITDB_ROOT_PASSWORD=${mongodb_password}
+            - MONGO_INITDB_ROOT_PASSWORD=$${MONGO_INITDB_ROOT_PASSWORD}
           ports:
             - "27017:27017"
           volumes:
@@ -49,6 +49,7 @@ write_files:
       #!/bin/bash
       set -e
       
+      MONGODB_PASSWORD=$1
       MONGODB_CONTAINER="mongodb_${environment}"
       MAX_ATTEMPTS=30
       ATTEMPT=0
@@ -60,7 +61,7 @@ write_files:
       echo "MongoDB Private IP: $PRIVATE_IP"
       
       # MongoDB가 연결 가능할 때까지 대기
-      until docker exec $MONGODB_CONTAINER mongosh --quiet --eval "db.adminCommand('ping')" -u ${mongodb_username} -p ${mongodb_password} --authenticationDatabase admin > /dev/null 2>&1
+      until docker exec $MONGODB_CONTAINER mongosh --quiet --eval "db.adminCommand('ping')" -u ${mongodb_username} -p "$MONGODB_PASSWORD" --authenticationDatabase admin > /dev/null 2>&1
       do
         ATTEMPT=$((ATTEMPT+1))
         if [ $ATTEMPT -eq $MAX_ATTEMPTS ]; then
@@ -85,7 +86,7 @@ write_files:
           });
           print('Replica set initialized successfully with host: $PRIVATE_IP:27017');
         }
-      " -u ${mongodb_username} -p ${mongodb_password} --authenticationDatabase admin
+      " -u ${mongodb_username} -p "$MONGODB_PASSWORD" --authenticationDatabase admin
       
       echo "Replica set initialization complete!"
 
@@ -113,7 +114,7 @@ runcmd:
       $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | \
       tee /etc/apt/sources.list.d/docker.list > /dev/null
   - apt-get update -y
-  - DEBIAN_FRONTEND=noninteractive apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+  - DEBIAN_FRONTEND=noninteractive apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin awscli jq
 
   # 2) Docker 서비스 및 권한
   - systemctl enable --now docker
@@ -134,8 +135,21 @@ runcmd:
       chown 999:999 /data/keyfile/mongodb-keyfile
     "
   
+    # MongoDB Password 가져오기 (SSM Parameter Store)
+    MONGODB_PASSWORD=$(aws ssm get-parameter \
+      --name "/${project_name}/${environment}/mongodb/password" \
+      --with-decryption \
+      --region ${region} \
+      --query "Parameter.Value" \
+      --output text)
+
+    if [ -z "$MONGODB_PASSWORD" ]; then
+      echo "Failed to retrieve MongoDB password from SSM"
+      exit 1
+    fi
+
   # 6) MongoDB 시작
-  - su - ubuntu -c "docker compose -f /home/ubuntu/app/docker-compose.mongodb.yml up -d"
+  - su - ubuntu -c "MONGO_INITDB_ROOT_PASSWORD=$MONGODB_PASSWORD docker compose -f /home/ubuntu/app/docker-compose.mongodb.yml up -d"
   
   # 7) Replica Set 초기화 (스크립트 내부에서 MongoDB 준비 상태 확인)
-  - /home/ubuntu/app/init-replica-set.sh
+  - /home/ubuntu/app/init-replica-set.sh "$MONGODB_PASSWORD"

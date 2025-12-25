@@ -27,8 +27,9 @@ resource "aws_instance" "mongodb_ec2" {
 
   user_data = templatefile("${path.module}/script.mongodb.tftpl", {
     mongodb_username = var.mongodb_username
-    mongodb_password = var.mongodb_password
     environment      = local.environment
+    region           = var.region
+    project_name     = var.project_name
   })
 
   tags = {

@@ -23,8 +23,9 @@ resource "aws_instance" "server_ec2" {
 
   user_data = templatefile("${path.module}/script.server.tftpl", {
     postgres_username = var.postgres_username
-    postgres_password = var.postgres_password
     environment       = local.environment
+    region            = var.region
+    project_name      = var.project_name
   })
 
   tags = {
