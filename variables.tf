@@ -1,9 +1,13 @@
+
+
+// Project Configuration
 variable "project_name" {
   description = "Project name for resource naming"
   type        = string
   default     = "capstone_02"
 }
 
+// Database Credentials
 variable "mongodb_username" {
   description = "MongoDB root username"
   type        = string
@@ -18,6 +22,7 @@ variable "postgres_username" {
 }
 
 
+// AWS Configuration
 variable "region" {
   description = "AWS region"
   type        = string
@@ -38,6 +43,7 @@ variable "iam_instance_profile_name" {
   default     = "SafeInstanceProfileForUser-inha-capstone-02"
 }
 
+// Compute Configuration
 variable "server_instance_type" {
   description = "Instance type for server EC2"
   type        = string
@@ -62,6 +68,7 @@ variable "nlp_instance_type" {
   default     = "t3.xlarge"
 }
 
+// Storage Configuration
 variable "server_root_volume_size" {
   description = "Root EBS size (GB) for server EC2"
   type        = number
@@ -92,34 +99,12 @@ variable "root_volume_type" {
   default     = "gp3"
 }
 
+// Application Configuration
 variable "dataset_log_path" {
   description = "Dataset sync log file path"
   type        = string
   default     = "/var/log/arxiv_sync.log"
 }
 
-# 고정 Private IP 주소 (서브넷 범위: 172.31.48.0/20)
-variable "server_private_ip" {
-  description = "Fixed private IP for Server EC2"
-  type        = string
-  default     = "172.31.48.10"
-}
 
-variable "mongodb_private_ip" {
-  description = "Fixed private IP for MongoDB EC2"
-  type        = string
-  default     = "172.31.48.20"
-}
-
-variable "es_private_ip" {
-  description = "Fixed private IP for Elasticsearch EC2"
-  type        = string
-  default     = "172.31.48.30"
-}
-
-variable "nlp_private_ip" {
-  description = "Fixed private IP for NLP EC2"
-  type        = string
-  default     = "172.31.48.40"
-}
 
