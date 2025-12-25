@@ -22,6 +22,19 @@ chmod +x /usr/local/bin/docker-compose
 mkdir -p /opt/elasticsearch
 cd /opt/elasticsearch
 
+# Fetch MongoDB Password from SSM
+MONGODB_PASSWORD=$(aws ssm get-parameter \
+  --name "/${project_name}/${environment}/mongodb/password" \
+  --with-decryption \
+  --region ${region} \
+  --query "Parameter.Value" \
+  --output text)
+
+if [ -z "$MONGODB_PASSWORD" ]; then
+  echo "Failed to retrieve MongoDB password from SSM"
+  exit 1
+fi
+
 # Create docker-compose.yml
 cat > docker-compose.yml <<'EOF'
 version: '3.8'
@@ -71,9 +84,10 @@ networks:
 EOF
 
 # Create Monstache configuration
-cat > monstache.toml <<'EOF'
+# Changed to <<EOF to allow variable expansion ($MONGODB_PASSWORD)
+cat > monstache.toml <<EOF
 # MongoDB connection
-mongo-url = "mongodb://${mongodb_username}:${mongodb_password}@${mongodb_host}:27017/arxiv?authSource=admin"
+mongo-url = "mongodb://${mongodb_username}:$MONGODB_PASSWORD@${mongodb_host}:27017/arxiv?authSource=admin"
 
 # Elasticsearch connection
 elasticsearch-urls = ["http://elasticsearch:9200"]
@@ -108,7 +122,7 @@ chmod 644 docker-compose.yml monstache.toml
 echo "Waiting for MongoDB to be accessible..."
 MONGODB_HOST="${mongodb_host}"
 MONGODB_USER="${mongodb_username}"
-MONGODB_PASS="${mongodb_password}"
+MONGODB_PASS="$MONGODB_PASSWORD"
 
 MAX_RETRIES=30
 RETRY_COUNT=0

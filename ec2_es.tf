@@ -26,8 +26,9 @@ resource "aws_instance" "es_ec2" {
   user_data = templatefile("${path.module}/script.es.tftpl", {
     mongodb_host     = aws_instance.mongodb_ec2.private_ip
     mongodb_username = var.mongodb_username
-    mongodb_password = var.mongodb_password
     environment      = local.environment
+    project_name     = var.project_name
+    region           = var.region
   })
 
   tags = {

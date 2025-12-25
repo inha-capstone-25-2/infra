@@ -10,11 +10,6 @@ variable "mongodb_username" {
   default     = "rsrs-root"
 }
 
-variable "mongodb_password" {
-  description = "MongoDB root password"
-  type        = string
-  sensitive   = true
-}
 
 variable "postgres_username" {
   description = "PostgreSQL master username"
@@ -22,11 +17,6 @@ variable "postgres_username" {
   default     = "rsrs-root"
 }
 
-variable "postgres_password" {
-  description = "PostgreSQL master password"
-  type        = string
-  sensitive   = true
-}
 
 variable "region" {
   description = "AWS region"
