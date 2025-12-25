@@ -206,3 +206,8 @@ terraform apply -var="mongodb_instance_type=t3.small"
 # 프로젝트 이름 변경
 terraform apply -var="project_name=my_project"
 ```
+
+## TODO
+
+- [ ] SSM
+- [ ] NAT Gateway and change to private subnet
