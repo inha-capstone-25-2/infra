@@ -24,17 +24,7 @@ variable "region" {
   default     = "ap-northeast-2"
 }
 
-variable "vpc_id" {
-  description = "Target VPC ID"
-  type        = string
-  default     = "vpc-0a8e611b221cddec6"
-}
 
-variable "security_group_id" {
-  description = "Security Group ID"
-  type        = string
-  default     = "sg-08b23a1e6bd2bbd1d"
-}
 
 variable "key_name" {
   description = "EC2 key pair name"
