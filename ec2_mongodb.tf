@@ -11,7 +11,7 @@ resource "aws_instance" "mongodb_ec2" {
   private_ip = var.mongodb_private_ip
 
   key_name             = var.key_name
-  iam_instance_profile = data.aws_iam_instance_profile.safe_profile.name
+  iam_instance_profile = aws_iam_instance_profile.ec2_profile.name
 
   root_block_device {
     volume_type           = var.root_volume_type
