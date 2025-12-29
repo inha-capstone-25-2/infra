@@ -4,13 +4,13 @@ resource "aws_security_group" "main" {
   description = "Allow SSH, Web, and Internal Traffic"
   vpc_id      = aws_vpc.main.id
 
-  # Inbound: SSH (Anywhere - but recommend restricting in production)
+  # Inbound: SSH (VPC 내부에서만 허용 - SSM Session Manager 사용)
   ingress {
-    description = "SSH from Anywhere"
+    description = "SSH from VPC"
     from_port   = 22
     to_port     = 22
     protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
+    cidr_blocks = [aws_vpc.main.cidr_block]
   }
 
   # Inbound: HTTP/HTTPS
@@ -81,6 +81,34 @@ resource "aws_security_group" "main" {
 
   tags = {
     Name        = "${var.project_name}_${local.environment}_sg"
+    Environment = local.environment
+    Project     = var.project_name
+  }
+}
+
+# VPC Endpoints용 Security Group
+resource "aws_security_group" "vpc_endpoints" {
+  name        = "${var.project_name}_${local.environment}_vpce_sg"
+  description = "Security group for VPC Endpoints"
+  vpc_id      = aws_vpc.main.id
+
+  ingress {
+    description = "HTTPS from VPC"
+    from_port   = 443
+    to_port     = 443
+    protocol    = "tcp"
+    cidr_blocks = [aws_vpc.main.cidr_block]
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = {
+    Name        = "${var.project_name}_${local.environment}_vpce_sg"
     Environment = local.environment
     Project     = var.project_name
   }
