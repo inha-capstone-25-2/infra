@@ -1,6 +1,11 @@
 #cloud-config
 package_update: true
 
+runcmd:
+  - timedatectl set-timezone Asia/Seoul
+  - apt-get update -y
+  - apt-get install -y awscli jq mysql-client
+
   # RDS 접속 정보 가져오기 (SSM Parameter Store)
   - |
     DB_URL=$(aws ssm get-parameter --name "/${project_name}/${environment}/rds/endpoint" --with-decryption --region ${region} --query "Parameter.Value" --output text)
@@ -11,12 +16,14 @@ package_update: true
       echo "Failed to retrieve Database credentials from SSM"
       exit 1
     fi
- 
-    # 애플리케이션에 전달할 환경변수 파일 생성 (예시)
-    echo "SPRING_DATASOURCE_URL=jdbc:mysql://$DB_URL:3306/capstone" >> /home/ubuntu/app/.env
-    echo "SPRING_DATASOURCE_USERNAME=$DB_USERNAME" >> /home/ubuntu/app/.env
-    echo "SPRING_DATASOURCE_PASSWORD=$DB_PASSWORD" >> /home/ubuntu/app/.env
 
-    # MySQL Client 설치 (연결 확인용)
-    apt-get install -y mysql-client
+    # 애플리케이션에 전달할 환경변수 파일 생성 (덮어쓰기)
+    mkdir -p /home/ubuntu/app
+    cat <<EOF > /home/ubuntu/app/.env
+SPRING_DATASOURCE_URL=jdbc:mysql://${DB_URL}/capstone
+SPRING_DATASOURCE_USERNAME=$DB_USERNAME
+SPRING_DATASOURCE_PASSWORD=$DB_PASSWORD
+EOF
 
+    chown -R ubuntu:ubuntu /home/ubuntu/app
+    chmod 644 /home/ubuntu/app/.env
