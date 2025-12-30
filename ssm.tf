@@ -32,6 +32,46 @@ resource "aws_ssm_parameter" "postgres_password" {
   }
 }
 
+resource "random_password" "rds_password" {
+  length  = 16
+  special = false
+}
+
+resource "aws_ssm_parameter" "rds_password" {
+  name        = "/${var.project_name}/${local.environment}/rds/password"
+  description = "RDS MySQL master password"
+  type        = "SecureString"
+  value       = random_password.rds_password.result
+
+  tags = {
+    Environment = local.environment
+    Project     = var.project_name
+  }
+}
+
+resource "aws_ssm_parameter" "rds_endpoint" {
+  name        = "/${var.project_name}/${local.environment}/rds/endpoint"
+  description = "RDS MySQL endpoint"
+  type        = "String"
+  value       = aws_db_instance.default.endpoint
+
+  tags = {
+    Environment = local.environment
+    Project     = var.project_name
+  }
+}
+
+resource "aws_ssm_parameter" "rds_username" {
+  name        = "/${var.project_name}/${local.environment}/rds/username"
+  description = "RDS MySQL master username"
+  type        = "String"
+  value       = aws_db_instance.default.username
+
+  tags = {
+    Environment = local.environment
+    Project     = var.project_name
+  }
+}
 # ===== VPC Endpoints for SSM Session Manager =====
 
 # SSM Endpoint (SSM API, Parameter Store)

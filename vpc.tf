@@ -120,3 +120,23 @@ resource "aws_route_table_association" "private" {
   subnet_id      = aws_subnet.private.id
   route_table_id = aws_route_table.private.id
 }
+
+# Private Subnet for RDS Multi-AZ (AZ: c)
+resource "aws_subnet" "private_c" {
+  vpc_id                  = aws_vpc.main.id
+  cidr_block              = "10.0.3.0/24"
+  availability_zone       = "${var.region}c"
+  map_public_ip_on_launch = false
+
+  tags = {
+    Name        = "${var.project_name}_${local.environment}_private_subnet_c"
+    Environment = local.environment
+    Project     = var.project_name
+  }
+}
+
+# Route Table Association (Private C)
+resource "aws_route_table_association" "private_c" {
+  subnet_id      = aws_subnet.private_c.id
+  route_table_id = aws_route_table.private.id
+}

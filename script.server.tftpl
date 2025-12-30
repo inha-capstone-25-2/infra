@@ -1,71 +1,29 @@
 #cloud-config
 package_update: true
 
-write_files:
-  - path: /home/ubuntu/app/docker-compose.postgres.yml
-    permissions: '0644'
-    content: |
-      version: '3.8'
-      services:
-        postgres:
-          image: postgres:16
-          container_name: postgres_${environment}
-          restart: unless-stopped
-          environment:
-            - POSTGRES_USER=${postgres_username}
-            - POSTGRES_PASSWORD=$${POSTGRES_PASSWORD}
-            - POSTGRES_DB=rsrs
-            - PGDATA=/var/lib/postgresql/data
-          ports:
-            - "5432:5432"
-          volumes:
-            - postgres_data:/var/lib/postgresql/data
-          networks:
-            - inha-network-${environment}
-      volumes:
-        postgres_data:
-      networks:
-        inha-network-${environment}:
-          driver: bridge
-
 runcmd:
-  - chown ubuntu:ubuntu /home/ubuntu
-  - chmod 0755 /home/ubuntu
-  - mkdir -p /home/ubuntu/backend
-  - chown -R ubuntu:ubuntu /home/ubuntu/backend
-  - mkdir -p /home/ubuntu/app
-  - chown -R ubuntu:ubuntu /home/ubuntu/app
-
   - timedatectl set-timezone Asia/Seoul
-
-  - bash -lc 'test -f /swapfile || (fallocate -l 8G /swapfile || dd if=/dev/zero of=/swapfile bs=1M count=8192)'
-  - chmod 600 /swapfile
-  - mkswap /swapfile || true
-  - swapon /swapfile || true
-  - bash -lc "grep -q '^/swapfile ' /etc/fstab || echo '/swapfile none swap sw 0 0' >> /etc/fstab"
-
   - apt-get update -y
-  - curl -fsSL https://get.docker.com | sh
-  - systemctl enable docker
-  - systemctl start docker
-  - apt-get update -y
-  - apt-get install -y docker-compose-plugin awscli jq
+  - apt-get install -y awscli jq mysql-client
 
-  - bash -lc 'until docker info >/dev/null 2>&1; do sleep 2; done'
-  
-  # Postgres Password 가져오기 (SSM Parameter Store)
+  # RDS 접속 정보 가져오기 (SSM Parameter Store)
   - |
-    POSTGRES_PASSWORD=$(aws ssm get-parameter \
-      --name "/${project_name}/${environment}/postgres/password" \
-      --with-decryption \
-      --region ${region} \
-      --query "Parameter.Value" \
-      --output text)
+    DB_URL=$(aws ssm get-parameter --name "/${project_name}/${environment}/rds/endpoint" --with-decryption --region ${region} --query "Parameter.Value" --output text)
+    DB_USERNAME=$(aws ssm get-parameter --name "/${project_name}/${environment}/rds/username" --with-decryption --region ${region} --query "Parameter.Value" --output text)
+    DB_PASSWORD=$(aws ssm get-parameter --name "/${project_name}/${environment}/rds/password" --with-decryption --region ${region} --query "Parameter.Value" --output text)
 
-    if [ -z "$POSTGRES_PASSWORD" ]; then
-      echo "Failed to retrieve Postgres password from SSM"
+    if [ -z "$DB_URL" ] || [ -z "$DB_USERNAME" ] || [ -z "$DB_PASSWORD" ]; then
+      echo "Failed to retrieve Database credentials from SSM"
       exit 1
     fi
- 
-    export POSTGRES_PASSWORD=$POSTGRES_PASSWORD
-    docker compose -f /home/ubuntu/app/docker-compose.postgres.yml up -d
+
+    # 애플리케이션에 전달할 환경변수 파일 생성 (덮어쓰기)
+    mkdir -p /home/ubuntu/app
+    cat <<EOF > /home/ubuntu/app/.env
+SPRING_DATASOURCE_URL=jdbc:mysql://${DB_URL}/capstone
+SPRING_DATASOURCE_USERNAME=$DB_USERNAME
+SPRING_DATASOURCE_PASSWORD=$DB_PASSWORD
+EOF
+
+    chown -R ubuntu:ubuntu /home/ubuntu/app
+    chmod 644 /home/ubuntu/app/.env
