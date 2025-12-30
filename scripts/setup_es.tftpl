@@ -1,22 +1,7 @@
 #!/bin/bash
 set -e
 
-# Update system
-apt-get update
-apt-get upgrade -y
-
-# Install prerequisites
-apt-get install -y apt-transport-https ca-certificates curl gnupg lsb-release netcat-openbsd
-
-# Install Docker
-curl -fsSL https://get.docker.com -o get-docker.sh
-sh get-docker.sh
-systemctl enable docker
-systemctl start docker
-
-# Install Docker Compose
-curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
-chmod +x /usr/local/bin/docker-compose
+# NOTE: Docker is assumed to be installed by install_docker.sh
 
 # Create app directory
 mkdir -p /opt/elasticsearch
@@ -84,7 +69,6 @@ networks:
 EOF
 
 # Create Monstache configuration
-# Changed to <<EOF to allow variable expansion ($MONGODB_PASSWORD)
 cat > monstache.toml <<EOF
 # MongoDB connection
 mongo-url = "mongodb://${mongodb_username}:$MONGODB_PASSWORD@${mongodb_host}:27017/arxiv?authSource=admin"
@@ -122,10 +106,19 @@ chmod 644 docker-compose.yml monstache.toml
 echo "Waiting for MongoDB to be accessible..."
 MONGODB_HOST="${mongodb_host}"
 MONGODB_USER="${mongodb_username}"
-MONGODB_PASS="$MONGODB_PASSWORD"
+# MONGODB_PASS is already in MONGODB_PASSWORD
 
 MAX_RETRIES=30
 RETRY_COUNT=0
+
+# Use netcat (nc) to check port connectivity
+# nc might not be installed in minimal images, but it was in prerequisites of script.es.tftpl
+# Adding it here just in case, though install_docker.sh installs common tools, nc might be specific.
+# Checking install_docker.sh again... it installs awscli jq.
+# script.es.tftpl installed netcat-openbsd. I should add it there or here. 
+# It's safer to add it here if it's specific, or I can trust it's there. 
+# Let's ensure it's installed as it's critical for this check.
+apt-get install -y netcat-openbsd
 
 until nc -z $MONGODB_HOST 27017 || [ $RETRY_COUNT -eq $MAX_RETRIES ]; do
   echo "Waiting for MongoDB at $MONGODB_HOST:27017... ($RETRY_COUNT/$MAX_RETRIES)"
@@ -140,7 +133,7 @@ else
 fi
 
 # Start services
-docker-compose up -d
+docker compose up -d
 
 # Wait for Elasticsearch to be ready
 echo "Waiting for Elasticsearch to be ready..."
