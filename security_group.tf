@@ -113,3 +113,25 @@ resource "aws_security_group" "vpc_endpoints" {
     Project     = var.project_name
   }
 }
+
+# Security Group for RDS
+resource "aws_security_group" "rds_sg" {
+  name        = "${var.project_name}_${local.environment}_rds_sg"
+  description = "Security group for RDS MySQL"
+  vpc_id      = aws_vpc.main.id
+
+  # Inbound: MySQL from Server EC2
+  ingress {
+    description     = "MySQL from Server EC2"
+    from_port       = 3306
+    to_port         = 3306
+    protocol        = "tcp"
+    security_groups = [aws_security_group.main.id]
+  }
+
+  tags = {
+    Name        = "${var.project_name}_${local.environment}_rds_sg"
+    Environment = local.environment
+    Project     = var.project_name
+  }
+}
