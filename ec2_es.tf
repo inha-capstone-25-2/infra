@@ -23,13 +23,16 @@ resource "aws_instance" "es_ec2" {
 
   depends_on = [aws_instance.mongodb_ec2]
 
-  user_data = templatefile("${path.module}/script.es.tftpl", {
-    mongodb_host     = aws_instance.mongodb_ec2.private_ip
-    mongodb_username = var.mongodb_username
-    environment      = local.environment
-    project_name     = var.project_name
-    region           = var.region
-  })
+  user_data = join("\n", [
+    file("${path.module}/scripts/install_docker.sh"),
+    templatefile("${path.module}/scripts/setup_es.tftpl", {
+      mongodb_host     = aws_instance.mongodb_ec2.private_ip
+      mongodb_username = var.mongodb_username
+      environment      = local.environment
+      project_name     = var.project_name
+      region           = var.region
+    })
+  ])
 
   tags = {
     Name        = "${var.project_name}_${local.environment}_es_ec2"

@@ -1,0 +1,141 @@
+#!/bin/bash
+set -e
+
+# NOTE: Docker is assumed to be installed by install_docker.sh
+
+# 0) 스왑 메모리 설정 (4GB)
+if [ ! -f /swapfile ]; then
+  fallocate -l 4G /swapfile
+  chmod 600 /swapfile
+  mkswap /swapfile
+  swapon /swapfile
+  echo '/swapfile none swap sw 0 0' >> /etc/fstab
+  sysctl vm.swappiness=10
+  echo 'vm.swappiness=10' >> /etc/sysctl.conf
+fi
+
+# 3) 앱 디렉터리 및 Docker 볼륨 준비
+mkdir -p /home/ubuntu/app
+chown -R ubuntu:ubuntu /home/ubuntu/app
+
+# 4) Docker 볼륨 먼저 생성
+docker volume create mongo_keyfile
+
+# 5) keyFile 생성 (볼륨이 이미 존재하므로 안전)
+docker run --rm -v mongo_keyfile:/data/keyfile mongo:6 bash -c "
+  openssl rand -base64 756 > /data/keyfile/mongodb-keyfile
+  chmod 400 /data/keyfile/mongodb-keyfile
+  chown 999:999 /data/keyfile/mongodb-keyfile
+"
+
+# MongoDB Password 가져오기 (SSM Parameter Store)
+MONGODB_PASSWORD=$(aws ssm get-parameter \
+  --name "/${project_name}/${environment}/mongodb/password" \
+  --with-decryption \
+  --region ${region} \
+  --query "Parameter.Value" \
+  --output text)
+
+if [ -z "$MONGODB_PASSWORD" ]; then
+  echo "Failed to retrieve MongoDB password from SSM"
+  exit 1
+fi
+
+# Create docker-compose.mongodb.yml
+cat <<EOF > /home/ubuntu/app/docker-compose.mongodb.yml
+version: '3.8'
+services:
+  mongo:
+    image: mongo:6
+    container_name: mongodb_${environment}
+    restart: unless-stopped
+    command: [
+      "mongod",
+      "--replSet", "rs0",
+      "--bind_ip_all",
+      "--keyFile", "/data/keyfile/mongodb-keyfile",
+      "--wiredTigerCacheSizeGB", "10",
+      "--wiredTigerJournalCompressor", "snappy",
+      "--wiredTigerCollectionBlockCompressor", "snappy",
+      "--wiredTigerIndexPrefixCompression", "true",
+      "--setParameter", "wiredTigerConcurrentReadTransactions=256",
+      "--setParameter", "wiredTigerConcurrentWriteTransactions=256",
+      "--setParameter", "syncdelay=300",
+      "--oplogSize", "2048"
+    ]
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=${mongodb_username}
+      - MONGO_INITDB_ROOT_PASSWORD=\$${MONGO_INITDB_ROOT_PASSWORD}
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+      - mongo_keyfile:/data/keyfile
+    networks:
+      - inha-network-${environment}
+volumes:
+  mongo_data:
+  mongo_keyfile:
+    external: true
+networks:
+  inha-network-${environment}:
+    driver: bridge
+EOF
+
+# Create init-replica-set.sh
+cat <<EOF > /home/ubuntu/app/init-replica-set.sh
+#!/bin/bash
+set -e
+
+MONGODB_PASSWORD=\$1
+MONGODB_CONTAINER="mongodb_${environment}"
+MAX_ATTEMPTS=30
+ATTEMPT=0
+
+# 실제 Private IP 가져오기
+PRIVATE_IP=\$(hostname -I | awk '{print \$1}')
+
+echo "Waiting for MongoDB to be ready..."
+echo "MongoDB Private IP: \$PRIVATE_IP"
+
+# MongoDB가 연결 가능할 때까지 대기
+until docker exec \$MONGODB_CONTAINER mongosh --quiet --eval "db.adminCommand('ping')" -u ${mongodb_username} -p "\$MONGODB_PASSWORD" --authenticationDatabase admin > /dev/null 2>&1
+do
+  ATTEMPT=\$((ATTEMPT+1))
+  if [ \$ATTEMPT -eq \$MAX_ATTEMPTS ]; then
+    echo "ERROR: MongoDB did not start within \$((\$MAX_ATTEMPTS * 2)) seconds"
+    exit 1
+  fi
+  echo "Attempt \$ATTEMPT/\$MAX_ATTEMPTS: MongoDB not ready yet, waiting..."
+  sleep 2
+done
+
+echo "MongoDB is ready! Initializing replica set..."
+
+# Replica Set 초기화 (Private IP 사용)
+docker exec \$MONGODB_CONTAINER mongosh --quiet --eval "
+  try {
+    rs.status();
+    print('Replica set already initialized');
+  } catch(e) {
+    rs.initiate({
+      _id: 'rs0',
+      members: [{ _id: 0, host: '\$PRIVATE_IP:27017' }]
+    });
+    print('Replica set initialized successfully with host: \$PRIVATE_IP:27017');
+  }
+" -u ${mongodb_username} -p "\$MONGODB_PASSWORD" --authenticationDatabase admin
+
+echo "Replica set initialization complete!"
+EOF
+
+chmod 0755 /home/ubuntu/app/init-replica-set.sh
+chown ubuntu:ubuntu /home/ubuntu/app/docker-compose.mongodb.yml /home/ubuntu/app/init-replica-set.sh
+
+# 6) MongoDB 시작
+su - ubuntu -c "MONGO_INITDB_ROOT_PASSWORD=$MONGODB_PASSWORD docker compose -f /home/ubuntu/app/docker-compose.mongodb.yml up -d"
+
+# 7) Replica Set 초기화 (스크립트 내부에서 MongoDB 준비 상태 확인)
+/home/ubuntu/app/init-replica-set.sh "$MONGODB_PASSWORD"
+
+echo "MongoDB setup completed successfully!"

@@ -25,12 +25,15 @@ resource "aws_instance" "mongodb_ec2" {
 
   user_data_replace_on_change = true
 
-  user_data = templatefile("${path.module}/script.mongodb.tftpl", {
-    mongodb_username = var.mongodb_username
-    environment      = local.environment
-    region           = var.region
-    project_name     = var.project_name
-  })
+  user_data = join("\n", [
+    file("${path.module}/scripts/install_docker.sh"),
+    templatefile("${path.module}/scripts/setup_mongodb.tftpl", {
+      mongodb_username = var.mongodb_username
+      environment      = local.environment
+      region           = var.region
+      project_name     = var.project_name
+    })
+  ])
 
   tags = {
     Name        = "${var.project_name}_${local.environment}_mongodb_ec2"
