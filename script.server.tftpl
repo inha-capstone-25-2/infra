@@ -20,7 +20,7 @@ runcmd:
     # 애플리케이션에 전달할 환경변수 파일 생성 (덮어쓰기)
     mkdir -p /home/ubuntu/app
     cat <<EOF > /home/ubuntu/app/.env
-SPRING_DATASOURCE_URL=jdbc:mysql://${DB_URL}:3306/capstone
+SPRING_DATASOURCE_URL=jdbc:mysql://${DB_URL}/capstone
 SPRING_DATASOURCE_USERNAME=$DB_USERNAME
 SPRING_DATASOURCE_PASSWORD=$DB_PASSWORD
 EOF

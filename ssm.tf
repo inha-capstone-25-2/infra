@@ -51,9 +51,9 @@ resource "aws_ssm_parameter" "rds_password" {
 
 resource "aws_ssm_parameter" "rds_endpoint" {
   name        = "/${var.project_name}/${local.environment}/rds/endpoint"
-  description = "RDS MySQL hostname"
+  description = "RDS MySQL endpoint"
   type        = "String"
-  value       = aws_db_instance.default.address
+  value       = aws_db_instance.default.endpoint
 
   tags = {
     Environment = local.environment
