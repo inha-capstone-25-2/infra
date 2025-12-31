@@ -39,13 +39,7 @@ resource "aws_security_group" "main" {
   }
 
   # Inbound: Internal Communication (Postgres, MongoDB, Elasticsearch, NLP)
-  ingress {
-    description = "Internal Postgres"
-    from_port   = 5432
-    to_port     = 5432
-    protocol    = "tcp"
-    cidr_blocks = [aws_vpc.main.cidr_block]
-  }
+
 
   ingress {
     description = "Internal MongoDB"

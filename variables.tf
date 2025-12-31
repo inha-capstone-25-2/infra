@@ -15,11 +15,7 @@ variable "mongodb_username" {
 }
 
 
-variable "postgres_username" {
-  description = "PostgreSQL master username"
-  type        = string
-  default     = "rsrs-root"
-}
+
 
 
 // AWS Configuration
