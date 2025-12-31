@@ -22,7 +22,7 @@ resource "aws_instance" "this" {
   }
 
   lifecycle {
-    ignore_changes = [tags, tags_all, root_block_device]
+    ignore_changes = [tags, tags_all]
   }
 
   tags = merge(
