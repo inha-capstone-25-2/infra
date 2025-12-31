@@ -79,6 +79,22 @@ resource "aws_security_group" "main" {
       cidr_blocks = [aws_vpc.main.cidr_block]
   }
 
+  ingress {
+      description = "Internal Grafana"
+      from_port   = 3000
+      to_port     = 3000
+      protocol    = "tcp"
+      cidr_blocks = [aws_vpc.main.cidr_block]
+  }
+
+  ingress {
+      description = "Internal Prometheus"
+      from_port   = 9090
+      to_port     = 9090
+      protocol    = "tcp"
+      cidr_blocks = [aws_vpc.main.cidr_block]
+  }
+
   # Outbound: All Traffic
   egress {
     from_port   = 0
