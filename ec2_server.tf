@@ -1,31 +1,17 @@
-resource "aws_instance" "server_ec2" {
+module "server_ec2" {
+  source = "./modules/ec2"
+
+  name                   = "${var.project_name}_${local.environment}_server_ec2"
   ami                    = data.aws_ami.ubuntu2204.id
   instance_type          = var.server_instance_type
   subnet_id              = aws_subnet.public.id
   vpc_security_group_ids = [aws_security_group.main.id]
+  private_ip             = local.server_private_ip
+  key_name               = var.key_name
+  iam_instance_profile   = aws_iam_instance_profile.ec2_profile.name
 
-  private_ip = local.server_private_ip
-
-  key_name             = var.key_name
-  iam_instance_profile = aws_iam_instance_profile.ec2_profile.name
-
-  root_block_device {
-    volume_type           = var.root_volume_type
-    volume_size           = var.server_root_volume_size
-    delete_on_termination = true
-  }
-
-  lifecycle {
-    ignore_changes = [tags, tags_all, root_block_device]
-  }
-
-  metadata_options {
-    http_endpoint               = "enabled"
-    http_tokens                 = "required"
-    http_put_response_hop_limit = 1
-  }
-
-  user_data_replace_on_change = true
+  root_volume_size = var.server_root_volume_size
+  root_volume_type = var.root_volume_type
 
   user_data = join("\n", [
     file("${path.module}/scripts/install_docker.sh"),
@@ -37,7 +23,7 @@ resource "aws_instance" "server_ec2" {
   ])
 
   tags = {
-    Name        = "${var.project_name}_${local.environment}_server_ec2"
     Environment = local.environment
+    Project     = var.project_name
   }
 }
