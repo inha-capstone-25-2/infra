@@ -68,6 +68,12 @@ variable "nlp_instance_type" {
   default     = "t3.xlarge"
 }
 
+variable "monitoring_instance_type" {
+  description = "Instance type for Monitoring EC2"
+  type        = string
+  default     = "t3.small"
+}
+
 // Storage Configuration
 variable "server_root_volume_size" {
   description = "Root EBS size (GB) for server EC2"
@@ -91,6 +97,12 @@ variable "nlp_root_volume_size" {
   description = "Root EBS size (GB) for NLP EC2"
   type        = number
   default     = 50
+}
+
+variable "monitoring_root_volume_size" {
+  description = "Root EBS size (GB) for Monitoring EC2"
+  type        = number
+  default     = 30
 }
 
 variable "root_volume_type" {

@@ -72,6 +72,24 @@ resource "aws_ssm_parameter" "rds_username" {
     Project     = var.project_name
   }
 }
+
+resource "random_password" "grafana_password" {
+  length  = 16
+  special = false
+}
+
+resource "aws_ssm_parameter" "grafana_password" {
+  name        = "/${var.project_name}/${local.environment}/grafana/admin_password"
+  description = "Grafana admin password"
+  type        = "SecureString"
+  value       = random_password.grafana_password.result
+
+  tags = {
+    Environment = local.environment
+    Project     = var.project_name
+  }
+}
+
 # ===== VPC Endpoints for SSM Session Manager =====
 
 # SSM Endpoint (SSM API, Parameter Store)
