@@ -19,6 +19,12 @@ resource "aws_instance" "monitoring_ec2" {
     ignore_changes = [tags, tags_all, root_block_device]
   }
 
+  metadata_options {
+    http_endpoint               = "enabled"
+    http_tokens                 = "required"
+    http_put_response_hop_limit = 1
+  }
+
   user_data_replace_on_change = true
 
   user_data = join("\n", [
