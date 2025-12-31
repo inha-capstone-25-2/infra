@@ -4,7 +4,8 @@
 # --- Setup Prometheus & Grafana ---
 
 MONITORING_DIR="/home/ubuntu/monitoring"
-mkdir -p $MONITORING_DIR/prometheus
+mkdir -p $MONITORING_DIR/prometheus/data
+mkdir -p $MONITORING_DIR/grafana/data
 
 # Fetch Grafana admin password from SSM Parameter Store
 GRAFANA_ADMIN_PASSWORD=$(aws ssm get-parameter \
@@ -29,7 +30,13 @@ scrape_configs:
       - targets: ['node-exporter:9100']
 EOF
 
-chown -R ubuntu:ubuntu $MONITORING_DIR
+# Set Permissions
+# Prometheus uses user 'nobody' (UID 65534) by default in some images, or root. 
+# Official prom/prometheus image runs as user 'nobody' (65534).
+chown -R 65534:65534 $MONITORING_DIR/prometheus/data
+
+# Grafana runs as user 472 group 472
+chown -R 472:472 $MONITORING_DIR/grafana/data
 
 # Create Docker Network
 docker network create monitoring-net || true
@@ -49,6 +56,7 @@ docker run -d \
     --network monitoring-net \
     -p 127.0.0.1:9090:9090 \
     -v $MONITORING_DIR/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml \
+    -v $MONITORING_DIR/prometheus/data:/prometheus \
     prom/prometheus:latest
 
 # Run Grafana with SSM password
@@ -57,6 +65,7 @@ docker run -d \
     --network monitoring-net \
     -p 3000:3000 \
     -e GF_SECURITY_ADMIN_PASSWORD="$GRAFANA_ADMIN_PASSWORD" \
+    -v $MONITORING_DIR/grafana/data:/var/lib/grafana \
     grafana/grafana:latest
 
 echo "Monitoring setup completed!"
