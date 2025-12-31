@@ -5,7 +5,7 @@ module "monitoring_ec2" {
   ami                    = data.aws_ami.ubuntu2204.id
   instance_type          = var.monitoring_instance_type
   subnet_id              = aws_subnet.private.id
-  vpc_security_group_ids = [aws_security_group.main.id]
+  vpc_security_group_ids = [aws_security_group.base.id, aws_security_group.monitoring.id]
   private_ip             = local.monitoring_private_ip
   key_name               = var.key_name
   iam_instance_profile   = aws_iam_instance_profile.ec2_profile.name
