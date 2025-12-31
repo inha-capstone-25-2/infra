@@ -87,13 +87,7 @@ resource "aws_security_group" "main" {
       cidr_blocks = [aws_vpc.main.cidr_block]
   }
 
-  ingress {
-      description = "Internal Prometheus"
-      from_port   = 9090
-      to_port     = 9090
-      protocol    = "tcp"
-      cidr_blocks = [aws_vpc.main.cidr_block]
-  }
+  # Note: Prometheus (9090) is bound to localhost only, accessed via Grafana datasource
 
   # Outbound: All Traffic
   egress {

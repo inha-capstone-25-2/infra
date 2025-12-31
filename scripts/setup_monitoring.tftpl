@@ -6,6 +6,14 @@
 MONITORING_DIR="/home/ubuntu/monitoring"
 mkdir -p $MONITORING_DIR/prometheus
 
+# Fetch Grafana admin password from SSM Parameter Store
+GRAFANA_ADMIN_PASSWORD=$(aws ssm get-parameter \
+    --name "/${project_name}/${environment}/grafana/admin_password" \
+    --with-decryption \
+    --region ${region} \
+    --query "Parameter.Value" \
+    --output text)
+
 # Create prometheus.yml
 cat <<EOF > $MONITORING_DIR/prometheus/prometheus.yml
 global:
@@ -15,10 +23,6 @@ scrape_configs:
   - job_name: 'prometheus'
     static_configs:
       - targets: ['localhost:9090']
-
-  - job_name: 'node_exporter'
-    static_configs:
-      - targets: ['node_exporter:9100'] # Check if needed or remove if not using node_exporter yet
 EOF
 
 chown -R ubuntu:ubuntu $MONITORING_DIR
@@ -26,19 +30,20 @@ chown -R ubuntu:ubuntu $MONITORING_DIR
 # Create Docker Network
 docker network create monitoring-net || true
 
-# Run Prometheus
+# Run Prometheus (localhost only - accessed via Grafana)
 docker run -d \
     --name prometheus \
     --network monitoring-net \
-    -p 9090:9090 \
+    -p 127.0.0.1:9090:9090 \
     -v $MONITORING_DIR/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml \
     prom/prometheus:latest
 
-# Run Grafana
+# Run Grafana with SSM password
 docker run -d \
     --name grafana \
     --network monitoring-net \
     -p 3000:3000 \
+    -e GF_SECURITY_ADMIN_PASSWORD="$GRAFANA_ADMIN_PASSWORD" \
     grafana/grafana:latest
 
 echo "Monitoring setup completed!"
