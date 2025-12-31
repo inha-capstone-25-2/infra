@@ -16,6 +16,11 @@ resource "aws_instance" "this" {
   user_data                   = var.user_data
   user_data_replace_on_change = var.user_data != null ? true : false
 
+  metadata_options {
+    http_tokens   = "required"
+    http_endpoint = "enabled"
+  }
+
   lifecycle {
     ignore_changes = [tags, tags_all, root_block_device]
   }
